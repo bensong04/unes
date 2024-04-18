@@ -169,6 +169,12 @@ typedef uint8_t byte_t; // Typedef for the sake of readability
  */
 typedef uint8_t opcode_t;
 
+/*
+ * This datatype should be wide enough to hold the current clock state
+ * (i.e. number of cycles).
+ */
+typedef uint32_t clk_t;
+
 typedef struct ucpu {
 
     /* REGISTERS */
@@ -188,4 +194,4 @@ typedef struct ucpu {
 
 void init_cpu(ucpu_t *cpu);
 
-bool emulate(ucpu_t *cpu, byte_t *program, int program_size);
+bool step(ucpu_t *cpu, byte_t *program, int program_size);
