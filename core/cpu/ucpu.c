@@ -11,16 +11,17 @@
 
 /*
  * Mapping from opcode to canonical opcode (NOT FULLY IMPLEMENTED)
+ * Up to AND so far...
  */
-const addr_mode_t OPCODE_TO_CANONICAL[] = {
-    O_BRK, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x00 - 0x0F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x10 - 0x1F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x20 - 0x2F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x30 - 0x3F
+static const addr_mode_t OPCODE_TO_CANONICAL[] = {
+    O_BRK, 0, 0, 0, 0, 0, O_ASL, 0, 0, 0, O_ASL, 0, 0, 0, O_ASL, 0, // 0x00 - 0x0F
+    0, 0, 0, 0, 0, 0, O_ASL, 0, 0, 0, 0, 0, 0, 0, O_ASL, 0, // 0x10 - 0x1F
+    0, O_AND, 0, 0, 0, O_AND, 0, 0, 0, O_AND, 0, 0, 0, O_AND, 0, 0, // 0x20 - 0x2F
+    0, O_AND, 0, 0, 0, O_AND, 0, 0, 0, O_AND, 0, 0, 0, O_AND, 0, 0, // 0x30 - 0x3F
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x40 - 0x4F
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x50 - 0x5F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x60 - 0x6F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x70 - 0x7F
+    0, O_ADC, 0, 0, 0, O_ADC, 0, 0, 0, O_ADC, 0, 0, 0, O_ADC, 0, 0, // 0x60 - 0x6F
+    0, O_ADC, 0, 0, 0, O_ADC, 0, 0, 0, O_ADC, 0, 0, 0, O_ADC, 0, 0, // 0x70 - 0x7F
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x80 - 0x8F
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x90 - 0x9F
     0, 0, 0, 0, 0, 0, 0, 0, 0, O_LDA, O_TAX, 0, 0, 0, 0, 0, // 0xA0 - 0xAF
@@ -33,16 +34,17 @@ const addr_mode_t OPCODE_TO_CANONICAL[] = {
 
 /*
  * Mapping from opcode to addressing mode (NOT FULLY IMPLEMENTED)
+ * Up to AND so far...
  */
-const uint8_t OPCODE_TO_ADDRMODE[] = {
+static const uint8_t OPCODE_TO_ADDRMODE[] = {
     IMPL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x00 - 0x0F
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x10 - 0x1F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x20 - 0x2F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x30 - 0x3F
+    0, INDIR_X, 0, 0, 0, ZPAGE, 0, 0, 0, IMMED, 0, 0, 0, ABS, 0, 0, // 0x20 - 0x2F
+    0, INDIR_Y, 0, 0, 0, ZPAGE_X, 0, 0, 0, ABS_Y, 0, 0, 0, ABS_X, 0, 0, // 0x30 - 0x3F
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x40 - 0x4F
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x50 - 0x5F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x60 - 0x6F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x70 - 0x7F
+    0, INDIR_X, 0, 0, 0, ZPAGE, 0, 0, 0, IMMED, 0, 0, 0, ABS, 0, 0, // 0x60 - 0x6F
+    0, INDIR_Y, 0, 0, 0, ZPAGE_X, 0, 0, 0, ABS_Y, 0, 0, 0, ABS_X, 0, 0, // 0x70 - 0x7F
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x80 - 0x8F
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x90 - 0x9F
     0, 0, 0, 0, 0, 0, 0, 0, 0, IMMED, IMPL, 0, 0, 0, 0, 0, // 0xA0 - 0xAF
@@ -50,6 +52,29 @@ const uint8_t OPCODE_TO_ADDRMODE[] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xC0 - 0xCF
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xD0 - 0xDF
     0, 0, 0, 0, 0, 0, 0, 0, IMPL, 0, 0, 0, 0, 0, 0, 0, // 0xE0 - 0xEF
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  // 0xF0 - 0xFF
+};
+
+/*
+ * Mapping from opcode to clock cycles taken
+ * Up to AND so far...
+ */
+static const clk_t OPCODE_TO_CYCLES[] = {
+    7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x00 - 0x0F
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x10 - 0x1F
+    0, 6, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, // 0x20 - 0x2F
+    0, 5, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, // 0x30 - 0x3F
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x40 - 0x4F
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x50 - 0x5F
+    0, 2, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, // 0x60 - 0x6F
+    0, 2, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, // 0x70 - 0x7F
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x80 - 0x8F
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x90 - 0x9F
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, // 0xA0 - 0xAF
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xB0 - 0xBF
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xC0 - 0xCF
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xD0 - 0xDF
+    0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, // 0xE0 - 0xEF
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  // 0xF0 - 0xFF
 };
 
@@ -194,6 +219,18 @@ clk_t step(ucpu_t *cpu, byte_t *program) {
     opcode_t canon = OPCODE_TO_CANONICAL[op];
 
     switch (canon) {
+        case O_ADC: {
+            // Apparently 6502 decimal mode is not supported on the NES?
+            // If there are problems with ADC maybe refer back here.
+            unsigned long temp = (unsigned long) cpu->A; // bad overflow detection
+            cpu->A += operand;
+            unsigned long true_result = temp + operand;
+            set_flag(cpu, OVERFLOW, (true_result != cpu->A));
+            set_flag(cpu, CARRY, !!(true_result >> (sizeof(uregr_t)*8)));
+            set_flag(cpu, ZERO, cpu->A == 0);
+            set_flag(cpu, NEGATIVE, !!(cpu->A >> 7));
+            break;
+        }
         case O_LDA: {
             cpu->A = operand;
             set_flag(cpu, ZERO, cpu->A == 0);

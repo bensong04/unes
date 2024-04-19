@@ -8,5 +8,5 @@
 #include <cpu/ucpu.h>
 
 typedef struct unes {
-    ucpu_t
+    ucpu_t cpu;
 } unes_t;
