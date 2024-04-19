@@ -141,6 +141,8 @@ int drive(ucpu_t *cpu, byte_t *program, int program_size) {
 clk_t step(ucpu_t *cpu, byte_t *program) {
     // get the current opcode
     opcode_t op = program[cpu->PC];
+    // initialize number of cycles
+    clk_t cycs = OPCODE_TO_CYCLES[op];
     // get the addressing mode
     addr_mode_t addr_mode = OPCODE_TO_ADDRMODE[op];
 
@@ -188,10 +190,13 @@ clk_t step(ucpu_t *cpu, byte_t *program) {
             break;
         }
         case ABS_X: {
+            uaddr_t packed_addr = pack(program[cpu->PC + 2], program[cpu->PC + 1]);
             operand = cpu->memory [
-                      (pack(program[cpu->PC + 2], program[cpu->PC + 1])
-                       + cpu->X) % 256
+                        packed_addr + cpu->X
             ];
+            if (program[cpu->PC + 1] + cpu->X > 255) { // page crossing
+                cycs++;
+            }
             cpu->PC += 3;
             break;
         }
@@ -201,10 +206,13 @@ clk_t step(ucpu_t *cpu, byte_t *program) {
             break;
         }
         case ABS_Y: {
+            uaddr_t packed_addr = pack(program[cpu->PC + 2], program[cpu->PC + 1]);
             operand = cpu->memory [
-                      (pack(program[cpu->PC + 2], program[cpu->PC + 1])
-                       + cpu->Y) % 256
+                        packed_addr + cpu->Y
             ];
+            if (program[cpu->PC + 1] + cpu->Y > 255) { // page crossing
+                cycs++;
+            }
             cpu->PC += 3;
             break;
         }
