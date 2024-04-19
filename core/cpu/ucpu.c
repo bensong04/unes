@@ -10,72 +10,69 @@
 #include "cpu/ucpu.h"
 
 /*
- * Mapping from opcode to canonical opcode (NOT FULLY IMPLEMENTED)
- * Up to AND so far...
+ * Mapping from opcode to canonical opcode
  */
 static const addr_mode_t OPCODE_TO_CANONICAL[] = {
-    O_BRK, 0, 0, 0, 0, 0, O_ASL, 0, 0, 0, O_ASL, 0, 0, 0, O_ASL, 0, // 0x00 - 0x0F
-    0, 0, 0, 0, 0, 0, O_ASL, 0, 0, 0, 0, 0, 0, 0, O_ASL, 0, // 0x10 - 0x1F
-    0, O_AND, 0, 0, 0, O_AND, 0, 0, 0, O_AND, 0, 0, 0, O_AND, 0, 0, // 0x20 - 0x2F
-    0, O_AND, 0, 0, 0, O_AND, 0, 0, 0, O_AND, 0, 0, 0, O_AND, 0, 0, // 0x30 - 0x3F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x40 - 0x4F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x50 - 0x5F
-    0, O_ADC, 0, 0, 0, O_ADC, 0, 0, 0, O_ADC, 0, 0, 0, O_ADC, 0, 0, // 0x60 - 0x6F
-    0, O_ADC, 0, 0, 0, O_ADC, 0, 0, 0, O_ADC, 0, 0, 0, O_ADC, 0, 0, // 0x70 - 0x7F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x80 - 0x8F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x90 - 0x9F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, O_LDA, O_TAX, 0, 0, 0, 0, 0, // 0xA0 - 0xAF
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xB0 - 0xBF
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xC0 - 0xCF
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xD0 - 0xDF
-    0, 0, 0, 0, 0, 0, 0, 0, O_INX, 0, 0, 0, 0, 0, 0, 0, // 0xE0 - 0xEF
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  // 0xF0 - 0xFF
+    O_BRK, O_ORA, 0, 0, 0, O_ORA, O_ASL, 0, O_PHP, O_ORA, O_ASL, 0, 0, O_ORA, O_ASL, 0, 
+    O_BPL, O_ORA, 0, 0, 0, O_ORA, O_ASL, 0, O_CLC, O_ORA, 0, 0, 0, O_ORA, O_ASL, 0, 
+    O_JSR, O_AND, 0, 0, O_BIT, O_AND, O_ROL, 0, O_PLP, O_AND, O_ROL, 0, O_BIT, O_AND, O_ROL, 0, 
+    O_BMI, O_AND, 0, 0, 0, O_AND, O_ROL, 0, O_SEC, O_AND, 0, 0, 0, O_AND, O_ROL, 0, 
+    O_RTI, O_EOR, 0, 0, 0, O_EOR, O_LSR, 0, O_PHA, O_EOR, O_LSR, 0, O_JMP, O_EOR, O_LSR, 0, 
+    O_BVC, O_EOR, 0, 0, 0, O_EOR, O_LSR, 0, O_CLI, O_EOR, 0, 0, 0, O_EOR, O_LSR, 0, 
+    O_RTS, O_ADC, 0, 0, 0, O_ADC, O_ROR, 0, O_PLA, O_ADC, O_ROR, 0, O_JMP, O_ADC, O_ROR, 0, 
+    0, O_ADC, 0, 0, 0, O_ADC, O_ROR, 0, O_SEI, O_ADC, 0, 0, 0, O_ADC, O_ROR, 0, 
+    0, O_STA, 0, 0, O_STY, O_STA, O_STX, 0, O_DEY, 0, O_TXA, 0, O_STY, O_STA, O_STX, 0, 
+    O_BCC, O_STA, 0, 0, O_STY, O_STA, O_STX, 0, O_TYA, O_STA, O_TXS, 0, 0, O_STA, 0, 0, 
+    O_LDY, O_LDA, O_LDX, 0, O_LDY, O_LDA, O_LDX, 0, O_TAY, O_LDA, O_TAX, 0, O_LDY, O_LDA, O_LDX, 0, 
+    O_BCS, O_LDA, 0, 0, O_LDY, O_LDA, O_LDX, 0, O_TSX, O_LDA, 0, 0, O_LDY, O_LDA, O_LDX, 0, 
+    O_CPY, O_CMP, 0, 0, O_CPY, O_CMP, O_DEC, 0, O_INY, O_CMP, O_DEX, 0, O_CPY, O_CMP, O_DEC, 0, 
+    O_BNE, O_CMP, 0, 0, 0, O_CMP, O_DEC, 0, O_CLD, O_CMP, 0, 0, 0, O_CMP, O_DEC, 0, 
+    O_CPX, O_SBC, 0, 0, O_CPX, O_SBC, O_INC, 0, O_INX, O_SBC, O_NOP, 0, O_CPX, O_SBC, O_INC, 0, 
+    O_BEQ, O_SBC, 0, 0, 0, O_SBC, O_INC, 0, O_SED, O_SBC, 0, 0, 0, O_SBC, O_INC, 0
 };
 
 /*
- * Mapping from opcode to addressing mode (NOT FULLY IMPLEMENTED)
- * Up to AND so far...
+ * Mapping from opcode to addressing mode
  */
 static const uint8_t OPCODE_TO_ADDRMODE[] = {
-    IMPL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x00 - 0x0F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x10 - 0x1F
-    0, INDIR_X, 0, 0, 0, ZPAGE, 0, 0, 0, IMMED, 0, 0, 0, ABS, 0, 0, // 0x20 - 0x2F
-    0, INDIR_Y, 0, 0, 0, ZPAGE_X, 0, 0, 0, ABS_Y, 0, 0, 0, ABS_X, 0, 0, // 0x30 - 0x3F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x40 - 0x4F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x50 - 0x5F
-    0, INDIR_X, 0, 0, 0, ZPAGE, 0, 0, 0, IMMED, 0, 0, 0, ABS, 0, 0, // 0x60 - 0x6F
-    0, INDIR_Y, 0, 0, 0, ZPAGE_X, 0, 0, 0, ABS_Y, 0, 0, 0, ABS_X, 0, 0, // 0x70 - 0x7F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x80 - 0x8F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x90 - 0x9F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, IMMED, IMPL, 0, 0, 0, 0, 0, // 0xA0 - 0xAF
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xB0 - 0xBF
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xC0 - 0xCF
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xD0 - 0xDF
-    0, 0, 0, 0, 0, 0, 0, 0, IMPL, 0, 0, 0, 0, 0, 0, 0, // 0xE0 - 0xEF
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  // 0xF0 - 0xFF
+    IMPL, INDIR_X, 0, 0, 0, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, 0, ABS, ABS, 0, 
+    REL, INDIR_Y, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y, 0, 0, 0, ABS_X, ABS_X, 0, 
+    ABS, INDIR_X, 0, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, ABS, ABS, ABS, 0, 
+    REL, INDIR_Y, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y, 0, 0, 0, ABS_X, ABS_X, 0, 
+    IMPL, INDIR_X, 0, 0, 0, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, ABS, ABS, ABS, 0, 
+    REL, INDIR_Y, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y, 0, 0, 0, ABS_X, ABS_X, 0, 
+    IMPL, INDIR_X, 0, 0, 0, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, INDIR, ABS, ABS, 0, 
+    0, INDIR_Y, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y, 0, 0, 0, ABS_X, ABS_X, 0, 
+    0, INDIR_X, 0, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, 0, IMPL, 0, ABS, ABS, ABS, 0, 
+    REL, INDIR_Y, 0, 0, ZPAGE_X, ZPAGE_X, ZPAGE_Y, 0, IMPL, ABS_Y, IMPL, 0, 0, ABS_X, 0, 0, 
+    IMMED, INDIR_X, IMMED, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, IMMED, IMPL, 0, ABS, ABS, ABS, 0, 
+    REL, INDIR_Y, 0, 0, ZPAGE_X, ZPAGE_X, ZPAGE_Y, 0, IMPL, ABS_Y, 0, 0, ABS_X, ABS_X, ABS_Y, 0, 
+    IMMED, INDIR_X, 0, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, IMMED, IMPL, 0, ABS, ABS, ABS, 0, 
+    REL, INDIR_Y, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y, 0, 0, 0, ABS_X, ABS_X, 0, 
+    IMMED, INDIR_X, 0, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, IMMED, IMPL, 0, ABS, ABS, ABS, 0, 
+    REL, INDIR_Y, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y, 0, 0, 0, ABS_X, ABS_X, 0
 };
 
 /*
  * Mapping from opcode to clock cycles taken
- * Up to AND so far...
  */
 static const clk_t OPCODE_TO_CYCLES[] = {
-    7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x00 - 0x0F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x10 - 0x1F
-    0, 6, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, // 0x20 - 0x2F
-    0, 5, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, // 0x30 - 0x3F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x40 - 0x4F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x50 - 0x5F
-    0, 2, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, // 0x60 - 0x6F
-    0, 2, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, // 0x70 - 0x7F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x80 - 0x8F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x90 - 0x9F
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, // 0xA0 - 0xAF
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xB0 - 0xBF
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xC0 - 0xCF
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0xD0 - 0xDF
-    0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, // 0xE0 - 0xEF
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  // 0xF0 - 0xFF
+    7, 6, 0, 0, 0, 3, 5, 0, 3, 2, 2, 0, 0, 4, 6, 0, 
+    2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0, 
+    6, 6, 0, 0, 3, 3, 5, 0, 4, 2, 2, 0, 4, 4, 6, 0, 
+    2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0, 
+    6, 6, 0, 0, 0, 3, 5, 0, 3, 2, 2, 0, 3, 4, 6, 0, 
+    2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0, 
+    6, 6, 0, 0, 0, 3, 5, 0, 4, 2, 2, 0, 5, 4, 6, 0, 
+    0, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0, 
+    0, 6, 0, 0, 3, 3, 3, 0, 2, 0, 2, 0, 4, 4, 4, 0, 
+    2, 6, 0, 0, 4, 4, 4, 0, 2, 5, 2, 0, 0, 5, 0, 0, 
+    2, 6, 2, 0, 3, 3, 3, 0, 2, 2, 2, 0, 4, 4, 4, 0, 
+    2, 5, 0, 0, 4, 4, 4, 0, 2, 4, 0, 0, 4, 4, 4, 0, 
+    2, 6, 0, 0, 3, 3, 5, 0, 2, 2, 2, 0, 4, 4, 6, 0, 
+    2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0, 
+    2, 6, 0, 0, 3, 3, 5, 0, 2, 2, 2, 0, 4, 4, 6, 0, 
+    2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0
 };
 
 /**
