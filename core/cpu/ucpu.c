@@ -101,6 +101,26 @@ static void set_flag(ucpu_t *cpu, flag_t flag, bool value) {
 
 /**
  * @brief
+ */
+static bool get_flag(ucpu_t *cpu, flag_t flag) {
+    return !!(cpu->status &= (1u << ((int) flag)));
+}
+
+/**
+ * @brief
+ * 
+ * @returns -1 if page(ptr1) < page(ptr2), +1 if page(ptr1) > page(ptr2), 0 if equal.
+ */
+static int compare_pages(uaddr_t ptr1, uaddr_t ptr2) {
+    uaddr_t page1 = (ptr1 >> 8); // get pages
+    uaddr_t page2 = (ptr2 >> 8); // ditto
+    if (page1 < page2) return -1;
+    else if (page1 == page2) return 0;
+    else if (page1 > page2) return 1;
+}
+
+/**
+ * @brief
  *
  * @returns false if negative, true if positive
  */
@@ -148,29 +168,32 @@ clk_t step(ucpu_t *cpu, byte_t *program) {
 
     // from the address mode, we can imply number of operands
     // as well as the (interpreted) operand itself
-    byte_t operand = 0;
+    byte_t *operand = 0; // store *where* the operand is
+                         // so we can fiddle with memory contents
+    bool accum = false; // we need to manually set this option
+                        // since the operand is actually a register
     switch (addr_mode) {
         case REL:
         case IMMED: {
-            operand = program[cpu->PC + 1]; // assume program has been assembled properly
+            operand = &program[cpu->PC + 1]; // assume program has been assembled properly
                                             // and that we can do this safely
             cpu->PC += 2; // remember to increment PC
             break;
         }
         case ZPAGE: {
-            operand = cpu->memory[ program[cpu->PC + 1] ];
+            operand = &cpu->memory[ program[cpu->PC + 1] ];
             cpu->PC += 2;
             break;
         }
         case ZPAGE_X: {
-            operand = cpu->memory [
+            operand = &cpu->memory [
                         (program[cpu->PC + 1] + cpu->X) % 256
             ];
             cpu->PC += 2;
             break;
         }
         case ZPAGE_Y: {
-            operand = cpu->memory [
+            operand = &cpu->memory [
                         (program[cpu->PC + 1] + cpu->Y) % 256
             ];
             cpu->PC += 2;
@@ -178,7 +201,7 @@ clk_t step(ucpu_t *cpu, byte_t *program) {
         }
         case INDIR: // literally the same as ABS except bytes are interp. differently
         case ABS: {
-            operand = cpu->memory [
+            operand = &cpu->memory [
                         pack(program[cpu->PC + 2], program[cpu->PC + 1]) // little endian
             ];
             cpu->PC += 3;
@@ -191,7 +214,7 @@ clk_t step(ucpu_t *cpu, byte_t *program) {
         }
         case ABS_X: {
             uaddr_t packed_addr = pack(program[cpu->PC + 2], program[cpu->PC + 1]);
-            operand = cpu->memory [
+            operand = &cpu->memory [
                         packed_addr + cpu->X
             ];
             if (program[cpu->PC + 1] + cpu->X > 255) { // page crossing
@@ -207,7 +230,7 @@ clk_t step(ucpu_t *cpu, byte_t *program) {
         }
         case ABS_Y: {
             uaddr_t packed_addr = pack(program[cpu->PC + 2], program[cpu->PC + 1]);
-            operand = cpu->memory [
+            operand = &cpu->memory [
                         packed_addr + cpu->Y
             ];
             if (program[cpu->PC + 1] + cpu->Y > 255) { // page crossing
@@ -215,6 +238,10 @@ clk_t step(ucpu_t *cpu, byte_t *program) {
             }
             cpu->PC += 3;
             break;
+        }
+        case ACCUM: {
+            operand = &cpu->A;
+            break; 
         }
         default: {
             cpu->PC += 1;
@@ -228,16 +255,42 @@ clk_t step(ucpu_t *cpu, byte_t *program) {
             // Apparently 6502 decimal mode is not supported on the NES?
             // If there are problems with ADC maybe refer back here.
             unsigned long temp = (unsigned long) cpu->A; // bad overflow detection
-            cpu->A += operand;
-            unsigned long true_result = temp + operand;
+            cpu->A += *operand;
+            unsigned long true_result = temp + *operand;
             set_flag(cpu, OVERFLOW, (true_result != cpu->A));
             set_flag(cpu, CARRY, !!(true_result >> (sizeof(uregr_t)*8)));
             set_flag(cpu, ZERO, cpu->A == 0);
             set_flag(cpu, NEGATIVE, !!(cpu->A >> 7));
             break;
         }
+        case O_AND: {
+            cpu->A &= *operand;
+            set_flag(cpu, ZERO, cpu->A == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->A));
+            break;
+        }
+        case O_ASL: { // this instruction modifies memory
+            byte_t val;
+            val = *operand;
+            *operand = (*operand << 1);
+            set_flag(cpu, CARRY, !!(val >> 7));
+            set_flag(cpu, ZERO, cpu->A == 0);
+            set_flag(cpu, NEGATIVE, !sign(*operand));
+            break;
+        }
+        case O_BCC: {
+            // if carry bit clear... <==> cpu->C == 0??
+            if (get_flag(cpu, CARRY)) {
+                cycs++; // +1 cycle on successful branch
+                offset_t off = (offset_t) *operand;
+                cpu->PC += off; // play around with this line
+                                // do we have to subtract back 2
+                                // for the initial addition to PC?
+
+            }
+        }
         case O_LDA: {
-            cpu->A = operand;
+            cpu->A = *operand;
             set_flag(cpu, ZERO, cpu->A == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;

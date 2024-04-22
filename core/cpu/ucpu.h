@@ -166,6 +166,12 @@ typedef uint8_t ustat_t;
 typedef uint8_t byte_t; // Typedef for the sake of readability
 
 /*
+ * Alternate 8-bit-wide type to represent offsets (which are
+ * obviously signed).
+ */
+typedef int8_t offset_t;
+
+/*
  * Opcodes are always a byte wide.
  */
 typedef uint8_t opcode_t;
