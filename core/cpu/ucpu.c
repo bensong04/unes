@@ -7,7 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
+
 #include "cpu/ucpu.h"
+#include "memory/umem.h"
 
 /*
  * Mapping from opcode to canonical opcode
@@ -131,15 +133,9 @@ static bool sign(byte_t u) {
 /**
  * @brief
  *
- * This pointer should be `sbrk`ed and not `malloc`'ed.
- * `sbrk` is preferable over `malloc` since we know *exactly*
- * how much memory will be used by our emulator ahead of time.
- *
  * @param[out] Pointer to where the cpu struct should be written.
  */
 void init_cpu(ucpu_t *cpu) {
-    // zero-initialize memory
-    memset(cpu->memory, UNIL, UCPU_MEM_CAP);
     // initialize all registers (placeholders for now)
     cpu->PC = 0u; // program counter
     cpu->A = 0u; // accumulator
@@ -158,7 +154,27 @@ int drive(ucpu_t *cpu, byte_t *program, int program_size) {
     }
 }
 
-clk_t step(ucpu_t *cpu, byte_t *program) {
+void step(ucpu_t *cpu, byte_t *program) {
+    // check if CPU is currently waiting on clock
+    if (cpu->cycs_left > 1) {
+        cpu->cycs_left--; // indicate one more cycle has passed
+        return;
+    } else if (cpu->cycs_left == 0) {
+        // interpret the next instruction and reset the state machine 
+        // get the current opcode
+        opcode_t op = program[cpu->PC];
+        // get the actual operation class
+        cpu->curr_canon = OPCODE_TO_CANONICAL[op];
+
+        // initialize number of cycles
+        cpu->cycs_left = OPCODE_TO_CYCLES[op] - 1; // subtract 1 for current cycle
+
+        // get the addressing mode
+        addr_mode_t addr_mode = OPCODE_TO_ADDRMODE[op]; 
+
+        return;
+    }
+    // execute the instruction we were waiting on
     // get the current opcode
     opcode_t op = program[cpu->PC];
     // initialize number of cycles
@@ -181,29 +197,29 @@ clk_t step(ucpu_t *cpu, byte_t *program) {
             break;
         }
         case ZPAGE: {
-            operand = &cpu->memory[ program[cpu->PC + 1] ];
+            operand = get_actual_addr(cpu->memory, program[cpu->PC + 1]);
             cpu->PC += 2;
             break;
         }
         case ZPAGE_X: {
-            operand = &cpu->memory [
+            operand = get_actual_addr(cpu->memory, 
                         (program[cpu->PC + 1] + cpu->X) % 256
-            ];
+            );
             cpu->PC += 2;
             break;
         }
         case ZPAGE_Y: {
-            operand = &cpu->memory [
+            operand = get_actual_addr(cpu->memory,
                         (program[cpu->PC + 1] + cpu->Y) % 256
-            ];
+            );
             cpu->PC += 2;
             break;
         }
         case INDIR: // literally the same as ABS except bytes are interp. differently
         case ABS: {
-            operand = &cpu->memory [
+            operand = get_actual_addr(cpu->memory,
                         pack(program[cpu->PC + 2], program[cpu->PC + 1]) // little endian
-            ];
+            );
             cpu->PC += 3;
             break;
         }
@@ -214,9 +230,9 @@ clk_t step(ucpu_t *cpu, byte_t *program) {
         }
         case ABS_X: {
             uaddr_t packed_addr = pack(program[cpu->PC + 2], program[cpu->PC + 1]);
-            operand = &cpu->memory [
+            operand = get_actual_aaddr(cpu->memory,
                         packed_addr + cpu->X
-            ];
+            );
             if (program[cpu->PC + 1] + cpu->X > 255) { // page crossing
                 cycs++;
             }
@@ -230,9 +246,9 @@ clk_t step(ucpu_t *cpu, byte_t *program) {
         }
         case ABS_Y: {
             uaddr_t packed_addr = pack(program[cpu->PC + 2], program[cpu->PC + 1]);
-            operand = &cpu->memory [
+            operand = get_actual_addr(cpu->memory, 
                         packed_addr + cpu->Y
-            ];
+            );
             if (program[cpu->PC + 1] + cpu->Y > 255) { // page crossing
                 cycs++;
             }

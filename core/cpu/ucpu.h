@@ -6,22 +6,16 @@
  *
  * @author Benedict Song <benedict04song@gmail.com>
  */
-#ifndef UCPU_INCLUDED
+#ifndef _UCPU_INCLUDED
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "memory/umem.h"
+
+
 /* DEFINES */
-
-/*
- * The 6502 possesses 256 pages X 256 bytes of memory.
- */
-#define UCPU_MEM_CAP (256 * 256)
-
-/*
- * The 6502's memory will be filled with UNILs when it is initialized.
- */
-#define UNIL 0x00
 
 /*
  * IMPORTANT: although the 6502 has 56 *distinct* opcodes,
@@ -149,7 +143,6 @@ typedef enum {
  * the special program counter (PC) register holds 16 bits.
  * All other registers are 8 bits wide.
  */
-typedef uint16_t uaddr_t; // Memory address type/PC register type
 typedef uint8_t uregr_t; // Type of all other registers
 
 /*
@@ -160,16 +153,11 @@ typedef uint8_t uregr_t; // Type of all other registers
 typedef uint8_t ustat_t;
 
 /*
- * The 6502's memory shall be represented as an array of
- * UCPU_MEM_CAP bytes.
- */
-typedef uint8_t byte_t; // Typedef for the sake of readability
-
-/*
  * Alternate 8-bit-wide type to represent offsets (which are
  * obviously signed).
  */
 typedef int8_t offset_t;
+
 
 /*
  * Opcodes are always a byte wide.
@@ -180,7 +168,7 @@ typedef uint8_t opcode_t;
  * This datatype should be wide enough to hold the current clock state
  * (i.e. number of cycles).
  */
-typedef uint32_t clk_t;
+typedef uint64_t clk_t;
 
 typedef struct ucpu {
 
@@ -195,7 +183,17 @@ typedef struct ucpu {
 
     /* MAIN MEMORY */
 
-    byte_t memory[UCPU_MEM_CAP];
+    ram_t memory;
+
+    /* STATE MACHINE LOGIC */
+    
+    // These two fields allow the CPU to jump to the proper switch case
+    addr_mode_t curr_addr_mode; // we might not need this one?
+    opcode_t curr_canon;
+
+    // This field is bookkeeping for when the emulator should execute
+    // the instruction it's waiting on. When it hits 1, it will execute the instruction. 
+    clk_t cycs_left; 
 
 } ucpu_t;
 
@@ -205,10 +203,11 @@ void init_cpu(ucpu_t *cpu);
 
 int drive(ucpu_t *cpu, byte_t *program, int program_size);
 
-clk_t step(ucpu_t *cpu, byte_t *program);
+void step(ucpu_t *cpu, byte_t *program);
 
 /* DEBUG ROUTINES */
 
 void dump_cpu(FILE *out, ucpu_t *cpu);
-#define UCPU_INCLUDED
+
+#define _UCPU_INCLUDED
 #endif
