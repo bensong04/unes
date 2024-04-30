@@ -88,7 +88,7 @@ def next_byte(line: str, verbose) -> ByteGenerator:
     Given a UASM source string line, returns a generator
     iterating over the corresponding component bytes.
     """
-    if line[0] == COMMENT_START:
+    if len(line) == 0 or line[0] == COMMENT_START:
         return
     
     tok_gen = isplit(line, TOK_DELIMITER)
@@ -130,6 +130,8 @@ def next_byte(line: str, verbose) -> ByteGenerator:
 
     for tok in tok_gen:
         tok = tok.strip()
+        if len(tok) == 0:
+            continue
         if tok[0] == COMMENT_START:
             return
         if verbose:

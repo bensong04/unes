@@ -1,0 +1,9 @@
+# Control for testing extra cycles due to crossing page boundaries.
+LDX,I 02 # load 2 into X
+LDA,I 2F # load 47 into A
+STA,AX 88 00 # store 47 to $008A
+# this should hopefully cause an extra cycle
+# since we changed pages from 00 to 01
+DEC,A 8A 00 
+LDA,A 8A 00 # verify 47 was stored in the right place
+BRK

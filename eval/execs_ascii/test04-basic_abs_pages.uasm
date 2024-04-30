@@ -1,7 +1,9 @@
-LDA,I 0C
-STA,A 00 FE
-DEC,A 00 FE
-LDA,A 00 FE
-TAX
-INX
+# Same as test 3, except now we cross a page boundary.
+LDX,I 02 # load 2 into X
+LDA,I 2F # load 47 into A
+STA,AX FF 00 # store 47 to $0101
+# this should hopefully cause an extra cycle
+# since we changed pages from 00 to 01
+DEC,A 01 01
+LDA,A 01 01 # verify 47 was stored in the right place
 BRK

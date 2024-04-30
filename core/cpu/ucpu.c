@@ -374,6 +374,12 @@ int step(ucpu_t *cpu, byte_t *program) {
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
         }
+        case O_LDX: {
+            cpu->X = *operand;
+            set_flag(cpu, ZERO, cpu->X == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->X));
+            break;
+        }
         case O_STA: {
             SETS(operand, cpu->A);
             break;
