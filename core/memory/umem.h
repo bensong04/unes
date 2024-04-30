@@ -35,9 +35,8 @@ typedef byte_t *ram_t; // Ditto
 ram_t alloc_ram(size_t how_much);
 
 void set_byte(ram_t ram, uaddr_t which, byte_t what);
-void get_byte(ram_t ram, uaddr_t which, byte_t what);
 
-uaddr_t get_actual_addr(ram_t ram, uaddr_t emulated_addr);
+void *get_actual_addr(ram_t ram, uaddr_t emulated_addr);
 
 #define _UMEM_INCLUDED
 #endif

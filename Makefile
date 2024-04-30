@@ -13,7 +13,7 @@ INCLUDE = core
 # Compiler flags
 OPTIONS = -fcommon -I$(INCLUDE)
 COMPILE_CMD = gcc $(OPTIONS)
-DBG_COMPILE_CMD = gcc -g -DDEBUG $(OPTIONS)
+DBG_COMPILE_CMD = gcc -g $(OPTIONS)
 
 # Where outputted binaries go
 BIN = bin

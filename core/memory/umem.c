@@ -4,10 +4,6 @@
  * 
  * @author Benedict Song
  */
-#ifdef DEBUG
-#include <stdio.h>
-#include <inttypes.h>
-#endif
 #include "memory/umem.h"
 
 ram_t alloc_ram(size_t how_much) {
@@ -22,12 +18,9 @@ ram_t alloc_ram(size_t how_much) {
 
 void set_byte(ram_t ram, uaddr_t which, byte_t what) {
     // Placeholder implementation without mirroring and all that bullshit.
-#ifdef DEBUG
-    printf("Address %" PRIu16 " set to %" PRIu8 ".\n", which, what);
-#endif
     ram[which] = what;
 }
 
-uaddr_t get_actual_addr(ram_t ram, uaddr_t emulated_addr) {
-    return (uaddr_t) (ram + emulated_addr); // should work?
+void *get_actual_addr(ram_t ram, uaddr_t emulated_addr) {
+    return (void *) (ram + emulated_addr); // should work?
 }
