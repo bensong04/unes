@@ -191,7 +191,7 @@ typedef struct ucpu {
     // and perform the proper logic when it's time to actually execute the instruction.
     addr_mode_t curr_addr_mode; // we might not need this one?
     opcode_t curr_canon; // need the canonical instruction
-    byte_t *operand; // store *where* the operand is
+    uaddr_t operand; // store *where* the operand is
                      // so we can fiddle with memory contents
     bool accum; // we need to manually set this option
     // since the operand is actually a register

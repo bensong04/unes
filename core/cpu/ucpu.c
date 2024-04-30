@@ -19,6 +19,9 @@
     }\
 }
 
+#define SET(which, what) set_byte(cpu->memory, (uaddr_t) which, what);
+#define GET(which) get_byte(cpu->memory, (uaddr_t) which);
+
 /*
  * Mapping from opcode to canonical opcode
  */
@@ -266,7 +269,8 @@ int step(ucpu_t *cpu, byte_t *program) {
                 break;
             }
             case ACCUM: {
-                cpu->operand = &cpu->A;
+                cpu->operand = NULL;
+                cpu->accum = true;
                 break; 
             }
             default: {
@@ -287,7 +291,7 @@ int step(ucpu_t *cpu, byte_t *program) {
 
     // get the addressing mode
     addr_mode_t addr_mode = cpu->curr_addr_mode;
-    byte_t *operand = cpu->operand; 
+    uaddr_t operand = cpu->operand; 
     bool accum = cpu->accum; 
 
     switch (op) {
@@ -312,7 +316,7 @@ int step(ucpu_t *cpu, byte_t *program) {
         case O_ASL: { // this instruction modifies memory
             byte_t val;
             val = *operand;
-            *operand = (*operand << 1);
+            set_byte(cpu->memory, operand, *operand << 1);
             set_flag(cpu, CARRY, !!(val >> 7));
             set_flag(cpu, ZERO, cpu->A == 0);
             set_flag(cpu, NEGATIVE, !sign(*operand));
@@ -361,7 +365,7 @@ int step(ucpu_t *cpu, byte_t *program) {
             break;
         }
         case O_DEC: {
-            *operand = *operand - 1;
+            set_byte(cpu->memory, operand, *operand - 1);
             set_flag(cpu, ZERO, *operand == 0);
             set_flag(cpu, NEGATIVE, !sign(*operand));
             break;
@@ -373,7 +377,7 @@ int step(ucpu_t *cpu, byte_t *program) {
             break;
         }
         case O_STA: {
-            *operand = cpu->A;
+            set_byte(cpu->memory, operand, cpu->A);
             break;
         }
         case O_TAX: {
