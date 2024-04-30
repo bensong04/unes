@@ -6,6 +6,7 @@ import argparse, re, sys, io, os.path
 TOK_DELIMITER = ' '
 LINE_DELIMITER = '\n'
 INSTR_DELIMITER = ','
+COMMENT_START = '#'
 
 ByteGenerator: TypeAlias = Generator[int, None, None]
 
@@ -87,6 +88,9 @@ def next_byte(line: str, verbose) -> ByteGenerator:
     Given a UASM source string line, returns a generator
     iterating over the corresponding component bytes.
     """
+    if line[0] == COMMENT_START:
+        return
+    
     tok_gen = isplit(line, TOK_DELIMITER)
     head_tok = next(tok_gen)
 
@@ -126,6 +130,8 @@ def next_byte(line: str, verbose) -> ByteGenerator:
 
     for tok in tok_gen:
         tok = tok.strip()
+        if tok[0] == COMMENT_START:
+            return
         if verbose:
             print(f"\tToken {tok} -> ", end="")
         yield int(tok, base=16)

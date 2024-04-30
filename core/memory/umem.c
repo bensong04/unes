@@ -7,7 +7,7 @@
 #ifdef DEBUG
 #include <stdio.h>
 #include <inttypes.h>
-#endif DEBUG
+#endif
 #include "memory/umem.h"
 
 ram_t alloc_ram(size_t how_much) {
@@ -20,12 +20,30 @@ ram_t alloc_ram(size_t how_much) {
     return where;
 }
 
+/**
+ * @brief Sets the byte at *emulated* address `which` to what.
+ */
 void set_byte(ram_t ram, uaddr_t which, byte_t what) {
     // Placeholder implementation without mirroring and all that bullshit.
 #ifdef DEBUG
-    printf("Address %" PRIu16 " set to %" PRIu8 ".\n");
+    printf("Address %" PRIu16 " set to %" PRIu8 ".\n", which, what);
 #endif
     ram[which] = what;
+}
+
+/**
+ * @brief Sets the byte at the *actual* address `which` to what.
+ * 
+ * The advantage of using `sets` over pure dereferencing is that
+ * this function wraps `set_byte`, which performs bookkeeping,
+ * memory mirroring, etc.
+ */
+void sets(ram_t ram, void *actual, byte_t what) {
+    set_byte(ram, get_emul_addr(ram, actual), what);
+}
+
+uaddr_t get_emul_addr(ram_t ram, void *actual_addr) {
+    return (uaddr_t) ((size_t) actual_addr - (size_t) ram);
 }
 
 void *get_actual_addr(ram_t ram, uaddr_t emulated_addr) {

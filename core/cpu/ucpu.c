@@ -19,6 +19,8 @@
     }\
 }
 
+#define SETS(where, what) sets(cpu->memory, where, what);
+
 /*
  * Mapping from opcode to canonical opcode
  */
@@ -312,7 +314,7 @@ int step(ucpu_t *cpu, byte_t *program) {
         case O_ASL: { // this instruction modifies memory
             byte_t val;
             val = *operand;
-            *operand = (*operand << 1);
+            SETS(operand, (*operand << 1));
             set_flag(cpu, CARRY, !!(val >> 7));
             set_flag(cpu, ZERO, cpu->A == 0);
             set_flag(cpu, NEGATIVE, !sign(*operand));
@@ -361,7 +363,7 @@ int step(ucpu_t *cpu, byte_t *program) {
             break;
         }
         case O_DEC: {
-            *operand = *operand - 1;
+            SETS(operand, *operand - 1);
             set_flag(cpu, ZERO, *operand == 0);
             set_flag(cpu, NEGATIVE, !sign(*operand));
             break;
@@ -373,7 +375,7 @@ int step(ucpu_t *cpu, byte_t *program) {
             break;
         }
         case O_STA: {
-            *operand = cpu->A;
+            SETS(operand, cpu->A);
             break;
         }
         case O_TAX: {

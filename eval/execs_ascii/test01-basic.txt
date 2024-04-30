@@ -1,4 +1,0 @@
-LDA,I C0
-TAX
-INX
-BRK
