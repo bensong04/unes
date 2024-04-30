@@ -187,13 +187,26 @@ typedef struct ucpu {
 
     /* STATE MACHINE LOGIC */
     
-    // These two fields allow the CPU to jump to the proper switch case
+    // These four fields allow the CPU to jump to the proper switch case
+    // and perform the proper logic when it's time to actually execute the instruction.
     addr_mode_t curr_addr_mode; // we might not need this one?
-    opcode_t curr_canon;
+    opcode_t curr_canon; // need the canonical instruction
+    byte_t *operand; // store *where* the operand is
+                     // so we can fiddle with memory contents
+    bool accum; // we need to manually set this option
+    // since the operand is actually a register
 
     // This field is bookkeeping for when the emulator should execute
     // the instruction it's waiting on. When it hits 1, it will execute the instruction. 
     clk_t cycs_left; 
+
+    // This field is bookkeeping for branch instructions that defer
+    // execution by one cycle upon a successful branch. 
+    // Upon a successful branch, step() will set this flag, increment
+    // cycs_left by 1, and return. When execution returns to the
+    // branch case, step() will perform the jump unconditionally.
+    // It will also reset deferred back to false.
+    bool deferred;
 
 } ucpu_t;
 

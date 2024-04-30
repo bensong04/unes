@@ -11,6 +11,13 @@
 #include "cpu/ucpu.h"
 #include "memory/umem.h"
 
+#define DEFER(cpu) \
+    if (!cpu->deferred) { \
+        cpu->cycs_left++; \
+        cpu->deferred = true; \
+        return; \
+    }
+
 /*
  * Mapping from opcode to canonical opcode
  */
@@ -170,103 +177,106 @@ void step(ucpu_t *cpu, byte_t *program) {
         cpu->cycs_left = OPCODE_TO_CYCLES[op] - 1; // subtract 1 for current cycle
 
         // get the addressing mode
-        addr_mode_t addr_mode = OPCODE_TO_ADDRMODE[op]; 
+        cpu->curr_addr_mode = OPCODE_TO_ADDRMODE[op]; 
 
+        cpu->operand = NULL;
+        cpu->accum = false;
+
+        // calculate everything
+        // note we also increment the PC here too
+        switch (cpu->curr_addr_mode) {
+            case REL:
+            case IMMED: {
+                cpu->operand = &program[cpu->PC + 1]; // assume program has been assembled properly
+                                                // and that we can do this safely
+                cpu->PC += 2; // remember to increment PC
+                break;
+            }
+            case ZPAGE: {
+                cpu->operand = get_actual_addr(cpu->memory, program[cpu->PC + 1]);
+                cpu->PC += 2;
+                break;
+            }
+            case ZPAGE_X: {
+                cpu->operand = get_actual_addr(cpu->memory, 
+                            (program[cpu->PC + 1] + cpu->X) % 256
+                );
+                cpu->PC += 2;
+                break;
+            }
+            case ZPAGE_Y: {
+                cpu->operand = get_actual_addr(cpu->memory,
+                            (program[cpu->PC + 1] + cpu->Y) % 256
+                );
+                cpu->PC += 2;
+                break;
+            }
+            case INDIR: // literally the same as ABS except bytes are interp. differently
+            case ABS: {
+                cpu->operand = get_actual_addr(cpu->memory,
+                            pack(program[cpu->PC + 2], program[cpu->PC + 1]) // little endian
+                );
+                cpu->PC += 3;
+                break;
+            }
+            case INDIR_X: {
+                // not implemented
+                cpu->PC += 2;
+                break;
+            }
+            case ABS_X: {
+                uaddr_t packed_addr = pack(program[cpu->PC + 2], program[cpu->PC + 1]);
+                cpu->operand = get_actual_aaddr(cpu->memory,
+                            packed_addr + cpu->X
+                );
+                if (program[cpu->PC + 1] + cpu->X > 255) { // page crossing
+                    cpu->cycs_left++;
+                }
+                cpu->PC += 3;
+                break;
+            }
+            case INDIR_Y: {
+                // not implemented
+                cpu->PC += 2;
+                break;
+            }
+            case ABS_Y: {
+                uaddr_t packed_addr = pack(program[cpu->PC + 2], program[cpu->PC + 1]);
+                cpu->operand = get_actual_addr(cpu->memory, 
+                            packed_addr + cpu->Y
+                );
+                if (program[cpu->PC + 1] + cpu->Y > 255) { // page crossing
+                    cpu->cycs_left++;
+                }
+                cpu->PC += 3;
+                break;
+            }
+            case ACCUM: {
+                cpu->operand = &cpu->A;
+                break; 
+            }
+            default: {
+                cpu->PC += 1;
+            }
+        }
+        // wait the necessary number of cycles
         return;
     }
+    // set clock to 0
+    cpu->cycs_left--;
+
     // execute the instruction we were waiting on
+    // read the state machine!
+
     // get the current opcode
-    opcode_t op = program[cpu->PC];
-    // initialize number of cycles
-    clk_t cycs = OPCODE_TO_CYCLES[op];
+    opcode_t op = cpu->curr_canon;
+
     // get the addressing mode
-    addr_mode_t addr_mode = OPCODE_TO_ADDRMODE[op];
+    addr_mode_t addr_mode = cpu->curr_addr_mode;
+    byte_t *operand = cpu->operand; 
+    bool accum = cpu->accum; 
 
-    // from the address mode, we can imply number of operands
-    // as well as the (interpreted) operand itself
-    byte_t *operand = 0; // store *where* the operand is
-                         // so we can fiddle with memory contents
-    bool accum = false; // we need to manually set this option
-                        // since the operand is actually a register
-    switch (addr_mode) {
-        case REL:
-        case IMMED: {
-            operand = &program[cpu->PC + 1]; // assume program has been assembled properly
-                                            // and that we can do this safely
-            cpu->PC += 2; // remember to increment PC
-            break;
-        }
-        case ZPAGE: {
-            operand = get_actual_addr(cpu->memory, program[cpu->PC + 1]);
-            cpu->PC += 2;
-            break;
-        }
-        case ZPAGE_X: {
-            operand = get_actual_addr(cpu->memory, 
-                        (program[cpu->PC + 1] + cpu->X) % 256
-            );
-            cpu->PC += 2;
-            break;
-        }
-        case ZPAGE_Y: {
-            operand = get_actual_addr(cpu->memory,
-                        (program[cpu->PC + 1] + cpu->Y) % 256
-            );
-            cpu->PC += 2;
-            break;
-        }
-        case INDIR: // literally the same as ABS except bytes are interp. differently
-        case ABS: {
-            operand = get_actual_addr(cpu->memory,
-                        pack(program[cpu->PC + 2], program[cpu->PC + 1]) // little endian
-            );
-            cpu->PC += 3;
-            break;
-        }
-        case INDIR_X: {
-            // not implemented
-            cpu->PC += 2;
-            break;
-        }
-        case ABS_X: {
-            uaddr_t packed_addr = pack(program[cpu->PC + 2], program[cpu->PC + 1]);
-            operand = get_actual_aaddr(cpu->memory,
-                        packed_addr + cpu->X
-            );
-            if (program[cpu->PC + 1] + cpu->X > 255) { // page crossing
-                cycs++;
-            }
-            cpu->PC += 3;
-            break;
-        }
-        case INDIR_Y: {
-            // not implemented
-            cpu->PC += 2;
-            break;
-        }
-        case ABS_Y: {
-            uaddr_t packed_addr = pack(program[cpu->PC + 2], program[cpu->PC + 1]);
-            operand = get_actual_addr(cpu->memory, 
-                        packed_addr + cpu->Y
-            );
-            if (program[cpu->PC + 1] + cpu->Y > 255) { // page crossing
-                cycs++;
-            }
-            cpu->PC += 3;
-            break;
-        }
-        case ACCUM: {
-            operand = &cpu->A;
-            break; 
-        }
-        default: {
-            cpu->PC += 1;
-        }
-    }
-    // get the actual operation class
-    opcode_t canon = OPCODE_TO_CANONICAL[op];
-
-    switch (canon) {
+    switch (op) {
         case O_ADC: {
             // Apparently 6502 decimal mode is not supported on the NES?
             // If there are problems with ADC maybe refer back here.
@@ -296,14 +306,15 @@ void step(ucpu_t *cpu, byte_t *program) {
         }
         case O_BCC: {
             // if carry bit clear... <==> cpu->C == 0??
-            if (get_flag(cpu, CARRY)) {
-                cycs++; // +1 cycle on successful branch
+            if (get_flag(cpu, CARRY) || cpu->deferred) {
+                DEFER(cpu); // defer 1 cycle on successful branch
                 offset_t off = (offset_t) *operand;
                 cpu->PC += off; // play around with this line
                                 // do we have to subtract back 2
                                 // for the initial addition to PC?
-
+                cpu->deferred = false;
             }
+            break;
         }
         case O_LDA: {
             cpu->A = *operand;
