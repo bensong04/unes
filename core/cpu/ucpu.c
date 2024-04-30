@@ -360,10 +360,20 @@ int step(ucpu_t *cpu, byte_t *program) {
             }
             break;
         }
+        case O_DEC: {
+            *operand--;
+            set_flag(cpu, ZERO, *operand == 0);
+            set_flag(cpu, NEGATIVE, !sign(*operand));
+            break;
+        }
         case O_LDA: {
             cpu->A = *operand;
             set_flag(cpu, ZERO, cpu->A == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
+            break;
+        }
+        case O_STA: {
+            *operand = cpu->A;
             break;
         }
         case O_TAX: {

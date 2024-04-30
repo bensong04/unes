@@ -18,6 +18,8 @@ DBG_COMPILE_CMD = gcc -g $(OPTIONS)
 # Where outputted binaries go
 BIN = bin
 
+.PHONY: clean
+
 cpu_driver_dbg:
 	$(DBG_COMPILE_CMD) $(SRC_CORE) $(CPU_DRIVER) -o $(BIN)/cpu_driver
 

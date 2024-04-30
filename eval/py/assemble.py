@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from typing import TypeAlias, Generator
 from spec import NES_SPEC
 import argparse, re, sys, io, os.path
