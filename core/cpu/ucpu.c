@@ -11,12 +11,13 @@
 #include "cpu/ucpu.h"
 #include "memory/umem.h"
 
-#define DEFER(cpu) \
+#define DEFER(cpu, cycs) {\
     if (!cpu->deferred) { \
-        cpu->cycs_left++; \
+        cpu->cycs_left += cycs; \
         cpu->deferred = true; \
-        return; \
-    }
+        return 0; \
+    }\
+}
 
 /*
  * Mapping from opcode to canonical opcode
@@ -142,7 +143,7 @@ static bool sign(byte_t u) {
  *
  * @param[out] Pointer to where the cpu struct should be written.
  */
-void init_cpu(ucpu_t *cpu) {
+void init_cpu(ucpu_t *cpu, ram_t ram) {
     // initialize all registers (placeholders for now)
     cpu->PC = 0u; // program counter
     cpu->A = 0u; // accumulator
@@ -150,6 +151,14 @@ void init_cpu(ucpu_t *cpu) {
     cpu->Y = 0u; // generic register Y
     cpu->S = 0u; // stack pointer
     cpu->status = 16u; // status "register" -- bit 5 always set
+    
+    // initialize main memory pointer
+    cpu->memory = ram;
+
+    // initialize state machine logic
+    cpu->accum = false;
+    cpu->cycs_left = 0;
+    cpu->deferred = false;
 }
 
 int drive(ucpu_t *cpu, byte_t *program, int program_size) {
@@ -161,11 +170,16 @@ int drive(ucpu_t *cpu, byte_t *program, int program_size) {
     }
 }
 
-void step(ucpu_t *cpu, byte_t *program) {
+/**
+ * @brief
+ * 
+ * @returns 1 if program terminates, 0 otherwise.
+ */
+int step(ucpu_t *cpu, byte_t *program) {
     // check if CPU is currently waiting on clock
     if (cpu->cycs_left > 1) {
         cpu->cycs_left--; // indicate one more cycle has passed
-        return;
+        return 0;
     } else if (cpu->cycs_left == 0) {
         // interpret the next instruction and reset the state machine 
         // get the current opcode
@@ -226,7 +240,7 @@ void step(ucpu_t *cpu, byte_t *program) {
             }
             case ABS_X: {
                 uaddr_t packed_addr = pack(program[cpu->PC + 2], program[cpu->PC + 1]);
-                cpu->operand = get_actual_aaddr(cpu->memory,
+                cpu->operand = get_actual_addr(cpu->memory,
                             packed_addr + cpu->X
                 );
                 if (program[cpu->PC + 1] + cpu->X > 255) { // page crossing
@@ -260,7 +274,7 @@ void step(ucpu_t *cpu, byte_t *program) {
             }
         }
         // wait the necessary number of cycles
-        return;
+        return 0;
     }
     // set clock to 0
     cpu->cycs_left--;
@@ -306,9 +320,39 @@ void step(ucpu_t *cpu, byte_t *program) {
         }
         case O_BCC: {
             // if carry bit clear... <==> cpu->C == 0??
-            if (get_flag(cpu, CARRY) || cpu->deferred) {
-                DEFER(cpu); // defer 1 cycle on successful branch
+            if (!get_flag(cpu, CARRY) || cpu->deferred) {
                 offset_t off = (offset_t) *operand;
+                clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
+                                1 : 2;
+                DEFER(cpu, cycs); // defer 1 cycle on successful branch
+                cpu->PC += off; // play around with this line
+                                // do we have to subtract back 2
+                                // for the initial addition to PC?
+                cpu->deferred = false;
+            }
+            break;
+        }
+        case O_BCS: {
+            // if carry bit clear... <==> cpu->C == 0??
+            if (get_flag(cpu, CARRY) || cpu->deferred) {
+                offset_t off = (offset_t) *operand;
+                clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
+                                1 : 2;
+                DEFER(cpu, cycs); // defer 1 cycle on successful branch
+                cpu->PC += off; // play around with this line
+                                // do we have to subtract back 2
+                                // for the initial addition to PC?
+                cpu->deferred = false;
+            }
+            break;
+        }
+        case O_BEQ: {
+            // if carry bit clear... <==> cpu->C == 0??
+            if (get_flag(cpu, ZERO) || cpu->deferred) {
+                offset_t off = (offset_t) *operand;
+                clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
+                                1 : 2;
+                DEFER(cpu, cycs); // defer 1 cycle on successful branch
                 cpu->PC += off; // play around with this line
                                 // do we have to subtract back 2
                                 // for the initial addition to PC?
@@ -336,17 +380,24 @@ void step(ucpu_t *cpu, byte_t *program) {
         }
         case O_BRK: {
             set_flag(cpu, BREAK, true);
-            break;
+            return 1;
         }
         default: {
-
+            break;
         }
     }
+    return 0;
 }
 
 void dump_cpu(FILE *out, ucpu_t *cpu) {
      fprintf(out, "PC: %" PRIu16 " A: %" PRIu8 " X: %" PRIu8 " "
-                "Y: %" PRIu8 " S: %" PRIu8 " status: %" PRIu8 "\n",
-                cpu->PC, cpu->A, cpu->X, cpu->Y, cpu->S, cpu->status);
+                "Y: %" PRIu8 " S: %" PRIu8 " status: %" PRIu8 " "
+                "remaining cycles: %" PRIu64 " deferred: %d\n",
+                cpu->PC, cpu->A, cpu->X, cpu->Y, cpu->S, cpu->status,
+                cpu->cycs_left, cpu->deferred);
 }
 
+// literally bc lldb is trash
+void dump_cpu_to_stdout(ucpu_t *cpu) {
+    dump_cpu(stdout, cpu);
+}

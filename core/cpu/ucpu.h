@@ -212,11 +212,11 @@ typedef struct ucpu {
 
 /* IMPORTANT CPU OPERATIONS */
 
-void init_cpu(ucpu_t *cpu);
+void init_cpu(ucpu_t *cpu, ram_t ram);
 
 int drive(ucpu_t *cpu, byte_t *program, int program_size);
 
-void step(ucpu_t *cpu, byte_t *program);
+int step(ucpu_t *cpu, byte_t *program);
 
 /* DEBUG ROUTINES */
 

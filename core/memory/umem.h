@@ -7,6 +7,7 @@
 #ifndef _UMEM_INCLUDED
 #include <stdint.h>
 #include <unistd.h>
+#include <sys/mman.h>
 
 /*
  * The NES possesses 256 pages X 256 bytes of memory.
@@ -33,9 +34,9 @@ typedef byte_t *ram_t; // Ditto
 
 ram_t alloc_ram(size_t how_much);
 
-void set_byte(uaddr_t which, byte_t what);
+void set_byte(ram_t ram, uaddr_t which, byte_t what);
 
-void *get_actual_addr(ram_t ram, uaddr_t *emulated_addr);
+void *get_actual_addr(ram_t ram, uaddr_t emulated_addr);
 
 #define _UMEM_INCLUDED
 #endif
