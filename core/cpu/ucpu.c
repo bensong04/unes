@@ -361,7 +361,7 @@ int step(ucpu_t *cpu, byte_t *program) {
             break;
         }
         case O_DEC: {
-            *operand--;
+            *operand = *operand - 1;
             set_flag(cpu, ZERO, *operand == 0);
             set_flag(cpu, NEGATIVE, !sign(*operand));
             break;
