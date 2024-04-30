@@ -1,1 +1,4 @@
-a9 c0 aa e8 00
+LDA,I C0
+TAX
+INX
+BRK
