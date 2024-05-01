@@ -335,7 +335,6 @@ int step(ucpu_t *cpu, byte_t *program) {
             break;
         }
         case O_BCS: {
-            // if carry bit clear... <==> cpu->C == 0??
             if (get_flag(cpu, CARRY) || cpu->deferred) {
                 offset_t off = (offset_t) *operand;
                 clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
@@ -349,8 +348,20 @@ int step(ucpu_t *cpu, byte_t *program) {
             break;
         }
         case O_BEQ: {
-            // if carry bit clear... <==> cpu->C == 0??
             if (get_flag(cpu, ZERO) || cpu->deferred) {
+                offset_t off = (offset_t) *operand;
+                clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
+                                1 : 2;
+                DEFER(cpu, cycs); // defer 1 cycle on successful branch
+                cpu->PC += off; // play around with this line
+                                // do we have to subtract back 2
+                                // for the initial addition to PC?
+                cpu->deferred = false;
+            }
+            break;
+        }
+        case O_BMI: {
+            if (get_flag(cpu, NEGATIVE) || cpu->deferred) {
                 offset_t off = (offset_t) *operand;
                 clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
                                 1 : 2;

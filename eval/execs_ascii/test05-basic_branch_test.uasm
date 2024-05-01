@@ -1,0 +1,6 @@
+# Test ability of branches to delay by one clock cycle
+LDX,I FF # Load -1 into register X (+2)
+BMI 01 # Skip over next instruction (+3)
+BRK # Should be skipped
+LDA,I CA # Load 202 into the accumulator (+2)
+BRK # Done! (+7)
