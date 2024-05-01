@@ -104,6 +104,13 @@ static inline uaddr_t pack(byte_t large, byte_t small) {
 /**
  * @brief
  */
+static bool get_nth_bit(byte_t byte, int n) {
+    return !!(byte & (1u << (n)));
+}
+
+/**
+ * @brief
+ */
 static void set_flag(ucpu_t *cpu, flag_t flag, bool value) {
     if (value)
         cpu->status |= (1u << ((int) flag));
@@ -115,7 +122,7 @@ static void set_flag(ucpu_t *cpu, flag_t flag, bool value) {
  * @brief
  */
 static bool get_flag(ucpu_t *cpu, flag_t flag) {
-    return !!(cpu->status &= (1u << ((int) flag)));
+    return get_nth_bit(cpu->status, (int) flag);
 }
 
 /**
@@ -302,7 +309,7 @@ int step(ucpu_t *cpu, byte_t *program) {
             set_flag(cpu, OVERFLOW, (true_result != cpu->A));
             set_flag(cpu, CARRY, !!(true_result >> (sizeof(uregr_t)*8)));
             set_flag(cpu, ZERO, cpu->A == 0);
-            set_flag(cpu, NEGATIVE, !!(cpu->A >> 7));
+            set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
         }
         case O_AND: {
@@ -360,6 +367,13 @@ int step(ucpu_t *cpu, byte_t *program) {
             }
             break;
         }
+        case O_BIT: {
+            byte_t test = cpu->A & *operand;
+            set_flag(cpu, ZERO, test == 0);
+            set_flag(cpu, OVERFLOW, get_nth_bit(test, 6));
+            set_flag(cpu, NEGATIVE, get_nth_bit(test, 7));
+            break;
+        }
         case O_BMI: {
             if (get_flag(cpu, NEGATIVE) || cpu->deferred) {
                 offset_t off = (offset_t) *operand;
@@ -371,6 +385,81 @@ int step(ucpu_t *cpu, byte_t *program) {
                                 // for the initial addition to PC?
                 cpu->deferred = false;
             }
+            break;
+        }
+        case O_BNE: {
+            if (!get_flag(cpu, ZERO) || cpu->deferred) {
+                offset_t off = (offset_t) *operand;
+                clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
+                                1 : 2;
+                DEFER(cpu, cycs); // defer 1 cycle on successful branch
+                cpu->PC += off; // play around with this line
+                                // do we have to subtract back 2
+                                // for the initial addition to PC?
+                cpu->deferred = false;
+            }
+            break;
+        }
+        case O_BPL: {
+            if (!get_flag(cpu, NEGATIVE) || cpu->deferred) {
+                offset_t off = (offset_t) *operand;
+                clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
+                                1 : 2;
+                DEFER(cpu, cycs); // defer 1 cycle on successful branch
+                cpu->PC += off; // play around with this line
+                                // do we have to subtract back 2
+                                // for the initial addition to PC?
+                cpu->deferred = false;
+            }
+            break;
+        }
+        case O_BVC: {
+            if (!get_flag(cpu, OVERFLOW) || cpu->deferred) {
+                offset_t off = (offset_t) *operand;
+                clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
+                                1 : 2;
+                DEFER(cpu, cycs); // defer 1 cycle on successful branch
+                cpu->PC += off; // play around with this line
+                                // do we have to subtract back 2
+                                // for the initial addition to PC?
+                cpu->deferred = false;
+            }
+            break;
+        }
+        case O_BVS: {
+            if (get_flag(cpu, OVERFLOW) || cpu->deferred) {
+                offset_t off = (offset_t) *operand;
+                clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
+                                1 : 2;
+                DEFER(cpu, cycs); // defer 1 cycle on successful branch
+                cpu->PC += off; // play around with this line
+                                // do we have to subtract back 2
+                                // for the initial addition to PC?
+                cpu->deferred = false;
+            }
+            break;
+        }
+        case O_CLC: {
+            set_flag(cpu, CARRY, false);
+            break;
+        }
+        case O_CLD: {
+            set_flag(cpu, DECIMAL, false);
+            break;
+        }
+        case O_CLI: {
+            set_flag(cpu, INTERRUPT, false);
+            break;
+        }
+        case O_CLV: {
+            set_flag(cpu, OVERFLOW, false);
+            break;
+        }
+        case O_CMP: { // Check this case later
+            byte_t comparison = cpu->A - *operand;
+            set_flag(cpu, CARRY, sign(comparison));
+            set_flag(cpu, ZERO, comparison == 0);
+            set_flag(cpu, NEGATIVE, !sign(comparison));
             break;
         }
         case O_DEC: {
