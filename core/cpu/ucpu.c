@@ -9,6 +9,7 @@
 #include <inttypes.h>
 
 #include "cpu/ucpu.h"
+#include "cpu/uerrno.h"
 #include "memory/umem.h"
 
 #define DEFER(cpu, cycs) {\
@@ -25,22 +26,22 @@
  * Mapping from opcode to canonical opcode
  */
 static const addr_mode_t OPCODE_TO_CANONICAL[] = {
-    O_BRK, O_ORA, 0, 0, 0, O_ORA, O_ASL, 0, O_PHP, O_ORA, O_ASL, 0, 0, O_ORA, O_ASL, 0, 
-    O_BPL, O_ORA, 0, 0, 0, O_ORA, O_ASL, 0, O_CLC, O_ORA, 0, 0, 0, O_ORA, O_ASL, 0, 
-    O_JSR, O_AND, 0, 0, O_BIT, O_AND, O_ROL, 0, O_PLP, O_AND, O_ROL, 0, O_BIT, O_AND, O_ROL, 0, 
-    O_BMI, O_AND, 0, 0, 0, O_AND, O_ROL, 0, O_SEC, O_AND, 0, 0, 0, O_AND, O_ROL, 0, 
-    O_RTI, O_EOR, 0, 0, 0, O_EOR, O_LSR, 0, O_PHA, O_EOR, O_LSR, 0, O_JMP, O_EOR, O_LSR, 0, 
-    O_BVC, O_EOR, 0, 0, 0, O_EOR, O_LSR, 0, O_CLI, O_EOR, 0, 0, 0, O_EOR, O_LSR, 0, 
-    O_RTS, O_ADC, 0, 0, 0, O_ADC, O_ROR, 0, O_PLA, O_ADC, O_ROR, 0, O_JMP, O_ADC, O_ROR, 0, 
-    0, O_ADC, 0, 0, 0, O_ADC, O_ROR, 0, O_SEI, O_ADC, 0, 0, 0, O_ADC, O_ROR, 0, 
-    0, O_STA, 0, 0, O_STY, O_STA, O_STX, 0, O_DEY, 0, O_TXA, 0, O_STY, O_STA, O_STX, 0, 
-    O_BCC, O_STA, 0, 0, O_STY, O_STA, O_STX, 0, O_TYA, O_STA, O_TXS, 0, 0, O_STA, 0, 0, 
-    O_LDY, O_LDA, O_LDX, 0, O_LDY, O_LDA, O_LDX, 0, O_TAY, O_LDA, O_TAX, 0, O_LDY, O_LDA, O_LDX, 0, 
-    O_BCS, O_LDA, 0, 0, O_LDY, O_LDA, O_LDX, 0, O_TSX, O_LDA, 0, 0, O_LDY, O_LDA, O_LDX, 0, 
-    O_CPY, O_CMP, 0, 0, O_CPY, O_CMP, O_DEC, 0, O_INY, O_CMP, O_DEX, 0, O_CPY, O_CMP, O_DEC, 0, 
-    O_BNE, O_CMP, 0, 0, 0, O_CMP, O_DEC, 0, O_CLD, O_CMP, 0, 0, 0, O_CMP, O_DEC, 0, 
-    O_CPX, O_SBC, 0, 0, O_CPX, O_SBC, O_INC, 0, O_INX, O_SBC, O_NOP, 0, O_CPX, O_SBC, O_INC, 0, 
-    O_BEQ, O_SBC, 0, 0, 0, O_SBC, O_INC, 0, O_SED, O_SBC, 0, 0, 0, O_SBC, O_INC, 0
+    O_BRK, O_ORA, O_DNE, O_DNE, O_DNE, O_ORA, O_ASL, O_DNE, O_PHP, O_ORA, O_ASL, O_DNE, O_DNE, O_ORA, O_ASL, O_DNE, 
+    O_BPL, O_ORA, O_DNE, O_DNE, O_DNE, O_ORA, O_ASL, O_DNE, O_CLC, O_ORA, O_DNE, O_DNE, O_DNE, O_ORA, O_ASL, O_DNE, 
+    O_JSR, O_AND, O_DNE, O_DNE, O_BIT, O_AND, O_ROL, O_DNE, O_PLP, O_AND, O_ROL, O_DNE, O_BIT, O_AND, O_ROL, O_DNE, 
+    O_BMI, O_AND, O_DNE, O_DNE, O_DNE, O_AND, O_ROL, O_DNE, O_SEC, O_AND, O_DNE, O_DNE, O_DNE, O_AND, O_ROL, O_DNE, 
+    O_RTI, O_EOR, O_DNE, O_DNE, O_DNE, O_EOR, O_LSR, O_DNE, O_PHA, O_EOR, O_LSR, O_DNE, O_JMP, O_EOR, O_LSR, O_DNE, 
+    O_BVC, O_EOR, O_DNE, O_DNE, O_DNE, O_EOR, O_LSR, O_DNE, O_CLI, O_EOR, O_DNE, O_DNE, O_DNE, O_EOR, O_LSR, O_DNE, 
+    O_RTS, O_ADC, O_DNE, O_DNE, O_DNE, O_ADC, O_ROR, O_DNE, O_PLA, O_ADC, O_ROR, O_DNE, O_JMP, O_ADC, O_ROR, O_DNE, 
+    O_DNE, O_ADC, O_DNE, O_DNE, O_DNE, O_ADC, O_ROR, O_DNE, O_SEI, O_ADC, O_DNE, O_DNE, O_DNE, O_ADC, O_ROR, O_DNE, 
+    O_DNE, O_STA, O_DNE, O_DNE, O_STY, O_STA, O_STX, O_DNE, O_DEY, O_DNE, O_TXA, O_DNE, O_STY, O_STA, O_STX, O_DNE, 
+    O_BCC, O_STA, O_DNE, O_DNE, O_STY, O_STA, O_STX, O_DNE, O_TYA, O_STA, O_TXS, O_DNE, O_DNE, O_STA, O_DNE, O_DNE, 
+    O_LDY, O_LDA, O_LDX, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE, O_TAY, O_LDA, O_TAX, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE, 
+    O_BCS, O_LDA, O_DNE, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE, O_TSX, O_LDA, O_DNE, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE, 
+    O_CPY, O_CMP, O_DNE, O_DNE, O_CPY, O_CMP, O_DEC, O_DNE, O_INY, O_CMP, O_DEX, O_DNE, O_CPY, O_CMP, O_DEC, O_DNE, 
+    O_BNE, O_CMP, O_DNE, O_DNE, O_DNE, O_CMP, O_DEC, O_DNE, O_CLD, O_CMP, O_DNE, O_DNE, O_DNE, O_CMP, O_DEC, O_DNE, 
+    O_CPX, O_SBC, O_DNE, O_DNE, O_CPX, O_SBC, O_INC, O_DNE, O_INX, O_SBC, O_NOP, O_DNE, O_CPX, O_SBC, O_INC, O_DNE, 
+    O_BEQ, O_SBC, O_DNE, O_DNE, O_DNE, O_SBC, O_INC, O_DNE, O_SED, O_SBC, O_DNE, O_DNE, O_DNE, O_SBC, O_INC, O_DNE
 };
 
 /*
@@ -158,7 +159,7 @@ void init_cpu(ucpu_t *cpu, ram_t ram) {
     cpu->A = 0u; // accumulator
     cpu->X = 0u; // generic register X
     cpu->Y = 0u; // generic register Y
-    cpu->S = 0u; // stack pointer
+    cpu->S = 0x01FF; // stack pointer. Stores EMULATED memory address.
     cpu->status = 16u; // status "register" -- bit 5 always set
     
     // initialize main memory pointer
@@ -170,13 +171,22 @@ void init_cpu(ucpu_t *cpu, ram_t ram) {
     cpu->deferred = false;
 }
 
-int drive(ucpu_t *cpu, byte_t *program, int program_size) {
-    while (1) {
-        if (cpu->PC >= program_size) { // check for termination this way (for now!)
-            return 0;
-        }
-        step(cpu, program);
+void push(ucpu_t *cpu, byte_t what) {
+    if (cpu->S == 0x00FF) {
+        UERRNO = ERR_STACK_OVERFLOW;
+        return;
     }
+    set_byte(cpu->memory, cpu->S, what);
+    cpu->S--;
+}
+
+byte_t pop(ucpu_t *cpu) {
+    if (cpu->S == 0x01FF) {
+        UERRNO = ERR_STACK_UNDERFLOW;
+        return 0x00;
+    }
+    cpu->S++;
+    return get_byte(cpu->memory, cpu->S);
 }
 
 /**
@@ -193,9 +203,17 @@ int step(ucpu_t *cpu, byte_t *program) {
         // interpret the next instruction and reset the state machine 
         // get the current opcode
         opcode_t op = program[cpu->PC];
+#ifdef DEBUG
+        printf("OP: %x\n", op);
+        dump_cpu(stdout, cpu);
+        printf("\n");
+#endif
         // get the actual operation class
         cpu->curr_canon = OPCODE_TO_CANONICAL[op];
-
+        if (cpu->curr_canon == O_DNE) {
+            fprintf(stderr, "Unrecognized instruction %x, exiting!\n", op);
+            return 1;
+        }
         // initialize number of cycles
         cpu->cycs_left = OPCODE_TO_CYCLES[op] - 1; // subtract 1 for current cycle
 
@@ -234,7 +252,13 @@ int step(ucpu_t *cpu, byte_t *program) {
                 cpu->PC += 2;
                 break;
             }
-            case INDIR: // literally the same as ABS except bytes are interp. differently
+            case INDIR: {
+                uaddr_t first = * (uaddr_t *) get_actual_addr(cpu->memory,
+                            pack(program[cpu->PC + 2], program[cpu->PC + 1])
+                );
+                cpu->operand = get_actual_addr(cpu->memory, first);
+                break;
+            }
             case ABS: {
                 cpu->operand = get_actual_addr(cpu->memory,
                             pack(program[cpu->PC + 2], program[cpu->PC + 1]) // little endian
@@ -243,7 +267,9 @@ int step(ucpu_t *cpu, byte_t *program) {
                 break;
             }
             case INDIR_X: {
-                // not implemented
+                cpu->operand = get_actual_addr(cpu->memory, 
+                            get_byte(cpu->memory, pack(0, program[cpu->PC + 1] + cpu->X))
+                );
                 cpu->PC += 2;
                 break;
             }
@@ -259,7 +285,12 @@ int step(ucpu_t *cpu, byte_t *program) {
                 break;
             }
             case INDIR_Y: {
-                // not implemented
+                uaddr_t before_indir = get_byte(cpu->memory, pack(0, program[cpu->PC + 1]));
+                uaddr_t after_indir = before_indir + cpu->Y;
+                if (compare_pages(after_indir, before_indir) != 0) {
+                    cpu->cycs_left++;
+                }
+                cpu->operand = get_actual_addr(cpu->memory, after_indir);
                 cpu->PC += 2;
                 break;
             }
@@ -275,7 +306,8 @@ int step(ucpu_t *cpu, byte_t *program) {
                 break;
             }
             case ACCUM: {
-                cpu->operand = &cpu->A;
+                cpu->accum = true;
+                cpu->PC += 1;
                 break; 
             }
             default: {
@@ -303,9 +335,10 @@ int step(ucpu_t *cpu, byte_t *program) {
         case O_ADC: {
             // Apparently 6502 decimal mode is not supported on the NES?
             // If there are problems with ADC maybe refer back here.
+            unsigned long add = *operand + (unsigned long) get_flag(cpu, CARRY);
             unsigned long temp = (unsigned long) cpu->A; // bad overflow detection
-            cpu->A += *operand;
-            unsigned long true_result = temp + *operand;
+            cpu->A += add;
+            unsigned long true_result = temp + add;
             set_flag(cpu, OVERFLOW, (true_result != cpu->A));
             set_flag(cpu, CARRY, !!(true_result >> (sizeof(uregr_t)*8)));
             set_flag(cpu, ZERO, cpu->A == 0);
@@ -318,8 +351,16 @@ int step(ucpu_t *cpu, byte_t *program) {
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
         }
-        case O_ASL: { // this instruction modifies memory
+        case O_ASL: { // a bit messy...
             byte_t val;
+            if (cpu->accum) {
+                val = cpu->A;
+                cpu->A = cpu->A << 1;
+                set_flag(cpu, CARRY, !!(val >> 7));
+                set_flag(cpu, ZERO, cpu->A == 0);
+                set_flag(cpu, NEGATIVE, !sign(cpu->A));
+                break;
+            }
             val = *operand;
             SETS(operand, (*operand << 1));
             set_flag(cpu, CARRY, !!(val >> 7));
@@ -462,10 +503,83 @@ int step(ucpu_t *cpu, byte_t *program) {
             set_flag(cpu, NEGATIVE, !sign(comparison));
             break;
         }
+        case O_CPX: {
+            byte_t comparison = cpu->X - *operand;
+            set_flag(cpu, CARRY, sign(comparison));
+            set_flag(cpu, ZERO, comparison == 0);
+            set_flag(cpu, NEGATIVE, !sign(comparison));
+            break;
+        }
+        case O_CPY: {
+            byte_t comparison = cpu->Y - *operand;
+            set_flag(cpu, CARRY, sign(comparison));
+            set_flag(cpu, ZERO, comparison == 0);
+            set_flag(cpu, NEGATIVE, !sign(comparison));
+            break;
+        }
         case O_DEC: {
             SETS(operand, *operand - 1);
             set_flag(cpu, ZERO, *operand == 0);
             set_flag(cpu, NEGATIVE, !sign(*operand));
+            break;
+        }
+        case O_DEX: {
+            cpu->X--;
+            set_flag(cpu, ZERO, cpu->X == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->X));
+            break;
+        }
+        case O_DEY: {
+            cpu->Y--;
+            set_flag(cpu, ZERO, cpu->X == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->X));
+            break;
+        }
+        case O_EOR: {
+            cpu->A ^= *operand;
+            set_flag(cpu, ZERO, cpu->A == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->A));
+            break;
+        }
+        case O_INC: {
+            SETS(operand, *operand + 1);
+            set_flag(cpu, ZERO, *operand == 0);
+            set_flag(cpu, NEGATIVE, !sign(*operand));
+            break;
+        }
+        case O_INX: {
+            cpu->X++;
+            set_flag(cpu, ZERO, cpu->X == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->X));
+            break;
+        }
+        case O_INY: {
+            cpu->Y++;
+            set_flag(cpu, ZERO, cpu->Y == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->Y));
+            break;
+        }
+        case O_JMP: {
+            /* 
+             * Taken from nesdev.org:
+             * An original 6502 has does not correctly fetch the 
+             * target address if the indirect vector falls on a 
+             * page boundary (e.g. $xxFF where xx is any value from 
+             * $00 to $FF). In this case fetches the LSB from $xxFF 
+             * as expected but takes the MSB from $xx00. This is 
+             * fixed in some later chips like the 65SC02 so for 
+             * compatibility always ensure the indirect vector is 
+             * not at the end of the page.
+             */
+#ifdef DEBUG
+            printf("jump to %x\n", *operand);
+#endif
+            cpu->PC = *operand; // TODO: check this case
+            break;
+        }
+        case O_JSR: {
+            push(cpu, cpu->PC + 2); // "+2" is NOT a typo.
+            cpu->PC = *operand;
             break;
         }
         case O_LDA: {
@@ -480,8 +594,124 @@ int step(ucpu_t *cpu, byte_t *program) {
             set_flag(cpu, NEGATIVE, !sign(cpu->X));
             break;
         }
+        case O_LDY: {
+            cpu->Y = *operand;
+            set_flag(cpu, ZERO, cpu->Y == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->Y));
+            break;
+        }
+        case O_LSR: { // a bit messy...
+            if (cpu->accum) {
+                bool carry = cpu->A % 2;
+                cpu->A = cpu->A >> 1;
+                set_flag(cpu, CARRY, carry);
+                set_flag(cpu, ZERO, cpu->A == 0);
+                break;
+            }
+            bool carry = *operand % 2;
+            SETS(operand, *operand >> 1);
+            set_flag(cpu, CARRY, carry);
+            set_flag(cpu, ZERO, *operand == 0);
+            break;
+        }
+        case O_ORA: {
+            cpu->A |= *operand;
+            set_flag(cpu, ZERO, cpu->A == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->A));
+            break;
+        }
+        case O_PHA: {
+            push(cpu, cpu->A);
+            break;
+        }
+        case O_PHP: {
+            push(cpu, cpu->status);
+            break;
+        }
+        case O_PLA: {
+            cpu->A = pop(cpu);
+            break;
+        }
+        case O_PLP: {
+            cpu->status = pop(cpu);
+            break;
+        }
+        case O_ROL: {
+            uregr_t carry_r = (uregr_t) get_nth_bit(cpu->status, CARRY);
+            if (cpu->accum) {
+                set_flag(cpu, CARRY, get_nth_bit(cpu->A, 0));
+                cpu->A <<= 1; // you can do this?! :O
+                cpu->A |= carry_r;
+                set_flag(cpu, NEGATIVE, !sign(cpu->A));
+            } else {
+                set_flag(cpu, CARRY, get_nth_bit(*operand, 0));
+                SETS(operand, (*operand << 1) | carry_r);
+                set_flag(cpu, NEGATIVE, !sign(*operand));
+            }
+            set_flag(cpu, ZERO, cpu->A == 0); // TODO: might be a typo in the spec?
+            break;
+        }
+        case O_ROR: {
+            uregr_t carry = (uregr_t) get_nth_bit(cpu->status, CARRY);
+            if (cpu->accum) {
+                set_flag(cpu, CARRY, get_nth_bit(cpu->A, 0));
+                cpu->A >>= 1; // wheee
+                cpu->A |= (carry << 7);
+                set_flag(cpu, NEGATIVE, !sign(cpu->A));
+            } else {
+                set_flag(cpu, CARRY, get_nth_bit(*operand, 0));
+                SETS(operand, (*operand >> 1) | (carry << 7));
+                set_flag(cpu, NEGATIVE, !sign(*operand));
+            }
+            set_flag(cpu, ZERO, cpu->A == 0); // see above
+            break;
+        }
+        case O_RTI: {
+            ustat_t stat = pop(cpu);
+            bool orig_brk = get_nth_bit(cpu->status, BREAK);
+            cpu->status = stat;
+            set_flag(cpu, BREAK, orig_brk); // ignore pulled BREAK bit
+            cpu->PC = pop(cpu);
+            break;
+        }
+        case O_RTS: {
+            cpu->PC = pop(cpu) + 1;
+            break;
+        }
+        case O_SBC: { // surely the most beautiful code ever that surely works 100% fine
+            unsigned long add = *operand + (unsigned long) get_flag(cpu, CARRY);
+            add = ~add + 1;
+            unsigned long temp = (unsigned long) cpu->A; // bad overflow detection
+            cpu->A += add;
+            unsigned long true_result = temp + add;
+            set_flag(cpu, OVERFLOW, (true_result != cpu->A));
+            set_flag(cpu, CARRY, !!(true_result >> (sizeof(uregr_t)*8)));
+            set_flag(cpu, ZERO, cpu->A == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->A));
+            break;
+        }
+        case O_SEC: {
+            set_flag(cpu, CARRY, true);
+            break;
+        }
+        case O_SED: {
+            set_flag(cpu, DECIMAL, true);
+            break;
+        }
+        case O_SEI: {
+            set_flag(cpu, INTERRUPT, true);
+            break;
+        }
         case O_STA: {
             SETS(operand, cpu->A);
+            break;
+        }
+        case O_STX: {
+            SETS(operand, cpu->X);
+            break;
+        }
+        case O_STY: {
+            SETS(operand, cpu->Y);
             break;
         }
         case O_TAX: {
@@ -490,15 +720,33 @@ int step(ucpu_t *cpu, byte_t *program) {
             set_flag(cpu, NEGATIVE, !sign(cpu->X));
             break;
         }
-        case O_INX: {
-            cpu->X++;
+        case O_TAY: {
+            cpu->X = cpu->A;
             set_flag(cpu, ZERO, cpu->X == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->X));
             break;
         }
+        case O_TXA: {
+            cpu->A = cpu->X;
+            set_flag(cpu, ZERO, cpu->A == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->A));
+            break;
+        }
+        case O_TXS: {
+            cpu->S = cpu->X;
+            break;
+        }
+        case O_TYA: {
+            cpu->A = cpu->Y;
+            set_flag(cpu, ZERO, cpu->A == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->A));
+            break;
+        }
         case O_BRK: {
+            push(cpu, cpu->PC + 2);
             set_flag(cpu, BREAK, true);
-            return 1;
+            push(cpu, cpu->status);
+            return 1; // for now, at least
         }
         default: {
             break;
@@ -509,7 +757,7 @@ int step(ucpu_t *cpu, byte_t *program) {
 
 void dump_cpu(FILE *out, ucpu_t *cpu) {
      fprintf(out, "PC: %" PRIu16 " A: %" PRIu8 " X: %" PRIu8 " "
-                "Y: %" PRIu8 " S: %" PRIu8 " status: %" PRIu8 " "
+                "Y: %" PRIu8 " S: %" PRIu16 " status: %" PRIu8 " "
                 "remaining cycles: %" PRIu64 " deferred: %d\n",
                 cpu->PC, cpu->A, cpu->X, cpu->Y, cpu->S, cpu->status,
                 cpu->cycs_left, cpu->deferred);

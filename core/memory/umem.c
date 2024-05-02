@@ -32,11 +32,22 @@ void set_byte(ram_t ram, uaddr_t which, byte_t what) {
 }
 
 /**
+ * @brief Gets the byte at *emulated* address `which`.
+ */
+byte_t get_byte(ram_t ram, uaddr_t which) {
+    // Placeholder implementation without mirroring and all that bullshit.
+    return ram[which];
+}
+
+/**
  * @brief Sets the byte at the *actual* address `which` to what.
  * 
  * The advantage of using `sets` over pure dereferencing is that
  * this function wraps `set_byte`, which performs bookkeeping,
  * memory mirroring, etc.
+ * 
+ * Note that there is no `gets` equivalent to `sets` because we
+ * can always just dereference an *actual* address.
  */
 void sets(ram_t ram, void *actual, byte_t what) {
     set_byte(ram, get_emul_addr(ram, actual), what);

@@ -165,6 +165,11 @@ if __name__ == "__main__":
         "-v", "--verbose", action="store_true", help="Prints a lot of extra information."
     )
 
+    # output file
+    parser.add_argument(
+        "-o", "--output", action="store", help="Specifies to where output binary should be written."
+    )
+
     # path of .uasm file to assemble
     parser.add_argument(
         "filepath", help="Path of the .uasm file to assemble."
@@ -174,9 +179,13 @@ if __name__ == "__main__":
 
     uasm_file = args.filepath
     verbose = args.verbose
+    o_file = args.output
 
-    o_file = list(os.path.splitext(uasm_file)[:-1])
-    o_file.append(".nes")
-    out_file = "".join(o_file)
-
+    if o_file is None:
+        o_file = list(os.path.splitext(uasm_file)[:-1])
+        o_file.append(".nes")
+        out_file = "".join(o_file)
+    else:
+        out_file = o_file
+    
     assemble(uasm_file, out_file, verbose)

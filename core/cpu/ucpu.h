@@ -101,6 +101,8 @@
 #define O_TXS 0x9A
 #define O_TYA 0x98
 
+#define O_DNE 0xFF
+
 /* GLOBALS */
 
 /*
@@ -178,7 +180,7 @@ typedef struct ucpu {
     uregr_t A; // Accumulator
     uregr_t X; // Generic register
     uregr_t Y; // Ditto
-    uregr_t S; // Stack pointer
+    uaddr_t S; // Stack pointer. Stores EMULATED memory address.
     ustat_t status; // Status "register"
 
     /* MAIN MEMORY */
@@ -214,7 +216,10 @@ typedef struct ucpu {
 
 void init_cpu(ucpu_t *cpu, ram_t ram);
 
-int drive(ucpu_t *cpu, byte_t *program, int program_size);
+void push(ucpu_t *cpu, byte_t what);
+byte_t pop(ucpu_t *cpu);
+
+
 
 int step(ucpu_t *cpu, byte_t *program);
 

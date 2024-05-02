@@ -1,0 +1,11 @@
+# Test correctness of ACCUM addressing mode.
+LDA,I 81
+LSR,ACM # Carry bit should be set
+BCS 2
+BRK
+NOP
+LDA,I 80
+LSR,ACM # This time carry bit shouldn't be set
+BCC 2
+LDA,I 45
+BRK
