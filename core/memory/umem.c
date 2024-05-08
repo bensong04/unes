@@ -21,42 +21,49 @@ ram_t alloc_ram(size_t how_much) {
 }
 
 /**
+ * @brief 
+ * 
+ * @note This should be a singleton.
+ */
+bus_t new_bus() {
+	bus_t bus = { NULL, NULL };
+#ifdef CPU_TESTS
+	bus.cpu_ram = alloc_ram(UCPU_MEM_CAP);	
+#endif
+	// not implemented
+	return bus;
+}
+
+/**
+ * @brief Connects a device to the bus.
+ * 
+ * A device should pass in a reference to its buslink, as well as
+ * the (singleton) bus to which it wants to link itself.
+ */
+void link(buslink_t *link, bus_t *bus) {
+    link->bus = bus;
+}
+
+/**
  * @brief Sets the byte at *emulated* address `which` to what.
  */
-void set_byte(ram_t ram, uaddr_t which, byte_t what) {
-    // Placeholder implementation without mirroring and all that bullshit.
-#ifdef DEBUG
-    printf("Address %" PRIu16 " set to %" PRIu8 ".\n", which, what);
-#endif
-    ram[which] = what;
+void set_byte(buslink_t link, uaddr_t which, byte_t what) {
+    bus_t *bus = link.bus;
+    switch (link.device) {
+        case DEV_CPU:
+            bus->cpu_ram[which] = what;
+            break;
+    }
 }
 
 /**
  * @brief Gets the byte at *emulated* address `which`.
  */
-byte_t get_byte(ram_t ram, uaddr_t which) {
-    // Placeholder implementation without mirroring and all that bullshit.
-    return ram[which];
+byte_t get_byte(buslink_t link, uaddr_t which) {
+    bus_t *bus = link.bus;
+    switch (link.device) {
+        case DEV_CPU:
+            return bus->cpu_ram[which];
+    }
 }
 
-/**
- * @brief Sets the byte at the *actual* address `which` to what.
- * 
- * The advantage of using `sets` over pure dereferencing is that
- * this function wraps `set_byte`, which performs bookkeeping,
- * memory mirroring, etc.
- * 
- * Note that there is no `gets` equivalent to `sets` because we
- * can always just dereference an *actual* address.
- */
-void sets(ram_t ram, void *actual, byte_t what) {
-    set_byte(ram, get_emul_addr(ram, actual), what);
-}
-
-uaddr_t get_emul_addr(ram_t ram, void *actual_addr) {
-    return (uaddr_t) ((size_t) actual_addr - (size_t) ram);
-}
-
-void *get_actual_addr(ram_t ram, uaddr_t emulated_addr) {
-    return (void *) (ram + emulated_addr); // should work?
-}

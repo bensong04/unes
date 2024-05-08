@@ -1,3 +1,4 @@
 .vscode
 scripts
 bin
+compile_flags.txt

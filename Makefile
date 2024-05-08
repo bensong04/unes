@@ -11,7 +11,7 @@ CPU_DRIVER = $(DRIVERS)/cpu_driver.c
 INCLUDE = core
 
 # Compiler flags
-OPTIONS = -fcommon -I$(INCLUDE)
+OPTIONS = -fcommon -fanalyzer -I$(INCLUDE)
 COMPILE_CMD = gcc $(OPTIONS)
 DBG_COMPILE_CMD = gcc -g -DDEBUG $(OPTIONS)
 

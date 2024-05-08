@@ -103,6 +103,14 @@
 
 #define O_DNE 0xFF
 
+/*
+ * Hardware/software interrupt vectors
+ */
+#define BRK_VECTOR 0xFFFE
+#define IRQ_VECTOR 0xFFFE
+#define RST_VECTOR 0xFFFC
+#define NMI_VECTOR 0xFFFA
+
 /* GLOBALS */
 
 /*
@@ -183,9 +191,9 @@ typedef struct ucpu {
     uaddr_t S; // Stack pointer. Stores EMULATED memory address.
     ustat_t status; // Status "register"
 
-    /* MAIN MEMORY */
+    /* LINK TO BUS */
 
-    ram_t memory;
+    buslink_t buslink;
 
     /* STATE MACHINE LOGIC */
     
@@ -193,10 +201,12 @@ typedef struct ucpu {
     // and perform the proper logic when it's time to actually execute the instruction.
     addr_mode_t curr_addr_mode; // we might not need this one?
     opcode_t curr_canon; // need the canonical instruction
-    byte_t *operand; // store *where* the operand is
+    uaddr_t operand; // store *where* the operand is
                      // so we can fiddle with memory contents
     bool accum; // we need to manually set this option
     // since the operand is actually a register
+	bool indir; // this is the only instruction where the operand
+				// is two bytes long
 
     // This field is bookkeeping for when the emulator should execute
     // the instruction it's waiting on. When it hits 1, it will execute the instruction. 
@@ -214,14 +224,12 @@ typedef struct ucpu {
 
 /* IMPORTANT CPU OPERATIONS */
 
-void init_cpu(ucpu_t *cpu, ram_t ram);
+void init_cpu(ucpu_t *cpu);
 
 void push(ucpu_t *cpu, byte_t what);
 byte_t pop(ucpu_t *cpu);
 
-
-
-int step(ucpu_t *cpu, byte_t *program);
+int step(ucpu_t *cpu);
 
 /* DEBUG ROUTINES */
 

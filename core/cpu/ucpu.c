@@ -20,7 +20,8 @@
     }\
 }
 
-#define SETS(where, what) sets(cpu->memory, where, what);
+#define SETS(where, what) (set_byte(cpu->buslink, where, what))
+#define GETS(where) (get_byte(cpu->buslink, where))
 
 /*
  * Mapping from opcode to canonical opcode
@@ -153,7 +154,7 @@ static bool sign(byte_t u) {
  *
  * @param[out] Pointer to where the cpu struct should be written.
  */
-void init_cpu(ucpu_t *cpu, ram_t ram) {
+void init_cpu(ucpu_t *cpu) {
     // initialize all registers (placeholders for now)
     cpu->PC = 0u; // program counter
     cpu->A = 0u; // accumulator
@@ -163,7 +164,10 @@ void init_cpu(ucpu_t *cpu, ram_t ram) {
     cpu->status = 16u; // status "register" -- bit 5 always set
     
     // initialize main memory pointer
-    cpu->memory = ram;
+    cpu->buslink = (buslink_t) {
+		DEV_CPU,
+		NULL
+	};
 
     // initialize state machine logic
     cpu->accum = false;
@@ -176,7 +180,7 @@ void push(ucpu_t *cpu, byte_t what) {
         UERRNO = ERR_STACK_OVERFLOW;
         return;
     }
-    set_byte(cpu->memory, cpu->S, what);
+    set_byte(cpu->buslink, cpu->S, what);
     cpu->S--;
 }
 
@@ -186,7 +190,7 @@ byte_t pop(ucpu_t *cpu) {
         return 0x00;
     }
     cpu->S++;
-    return get_byte(cpu->memory, cpu->S);
+    return GETS(cpu->S);
 }
 
 /**
@@ -194,7 +198,7 @@ byte_t pop(ucpu_t *cpu) {
  * 
  * @returns 1 if program terminates, 0 otherwise.
  */
-int step(ucpu_t *cpu, byte_t *program) {
+int step(ucpu_t *cpu) {
     // check if CPU is currently waiting on clock
     if (cpu->cycs_left > 1) {
         cpu->cycs_left--; // indicate one more cycle has passed
@@ -202,7 +206,8 @@ int step(ucpu_t *cpu, byte_t *program) {
     } else if (cpu->cycs_left == 0) {
         // interpret the next instruction and reset the state machine 
         // get the current opcode
-        opcode_t op = program[cpu->PC];
+        opcode_t op = GETS(cpu->PC); // asks the bus what byte is at position PC
+													   // and interprets this as the current instruction.
 #ifdef DEBUG
         printf("OP: %x\n", op);
         dump_cpu(stdout, cpu);
@@ -220,96 +225,98 @@ int step(ucpu_t *cpu, byte_t *program) {
         // get the addressing mode
         cpu->curr_addr_mode = OPCODE_TO_ADDRMODE[op]; 
 
-        cpu->operand = NULL;
+        cpu->operand = NULLPTR;
         cpu->accum = false;
+		cpu->indir = false;
+		
+		// the goal is to be able to do get_byte(cpu->buslink, cpu->operand)
+		// and set_byte(cpu->buslink, cpu-<operand) and have it do the proper thing
 
         // calculate everything
         // note we also increment the PC here too
         switch (cpu->curr_addr_mode) {
             case REL:
             case IMMED: {
-                cpu->operand = &program[cpu->PC + 1]; // assume program has been assembled properly
-                                                // and that we can do this safely
+                cpu->operand = cpu->PC + 1; // assume program has been assembled properly
+                                            // and that we can do this safely
                 cpu->PC += 2; // remember to increment PC
                 break;
             }
+						
             case ZPAGE: {
-                cpu->operand = get_actual_addr(cpu->memory, program[cpu->PC + 1]);
+                cpu->operand = GETS(cpu->PC + 1); // implicit conversion from byte_t -> uaddr_t
                 cpu->PC += 2;
                 break;
             }
+
             case ZPAGE_X: {
-                cpu->operand = get_actual_addr(cpu->memory, 
-                            (program[cpu->PC + 1] + cpu->X) % 256
-                );
+                cpu->operand = (GETS(cpu->PC + 1) + cpu->X)
+					% 256;
                 cpu->PC += 2;
                 break;
             }
+
             case ZPAGE_Y: {
-                cpu->operand = get_actual_addr(cpu->memory,
-                            (program[cpu->PC + 1] + cpu->Y) % 256
-                );
+                cpu->operand = (GETS(cpu->PC + 1) + cpu->Y)
+					% 256;
                 cpu->PC += 2;
                 break;
             }
-            case INDIR: {
-                uaddr_t first = * (uaddr_t *) get_actual_addr(cpu->memory,
-                            pack(program[cpu->PC + 2], program[cpu->PC + 1])
-                );
-                cpu->operand = get_actual_addr(cpu->memory, first);
+
+            case INDIR:
+				cpu->indir = true;
+			case ABS: {
+				cpu->operand = pack(GETS(cpu->PC + 2),
+									 GETS(cpu->PC + 1));
+				cpu->PC += 3;
                 break;
             }
-            case ABS: {
-                cpu->operand = get_actual_addr(cpu->memory,
-                            pack(program[cpu->PC + 2], program[cpu->PC + 1]) // little endian
-                );
-                cpu->PC += 3;
-                break;
-            }
+
             case INDIR_X: {
-                cpu->operand = get_actual_addr(cpu->memory, 
-                            get_byte(cpu->memory, pack(0, program[cpu->PC + 1] + cpu->X))
-                );
+				cpu->operand = pack(GETS(cpu->PC + 1) + cpu->X + 1,
+							 		GETS(cpu->PC + 1) + cpu->X);
                 cpu->PC += 2;
                 break;
             }
+
             case ABS_X: {
-                uaddr_t packed_addr = pack(program[cpu->PC + 2], program[cpu->PC + 1]);
-                cpu->operand = get_actual_addr(cpu->memory,
-                            packed_addr + cpu->X
-                );
-                if (program[cpu->PC + 1] + cpu->X > 255) { // page crossing
+				cpu->operand = pack(GETS(cpu->PC + 2),
+									GETS(cpu->PC + 1) + cpu->X);
+                if (GETS(cpu->PC + 1) + cpu->X > 255) { // page crossing
                     cpu->cycs_left++;
                 }
                 cpu->PC += 3;
                 break;
             }
+			
             case INDIR_Y: {
-                uaddr_t before_indir = get_byte(cpu->memory, pack(0, program[cpu->PC + 1]));
-                uaddr_t after_indir = before_indir + cpu->Y;
-                if (compare_pages(after_indir, before_indir) != 0) {
+                uaddr_t before_indir = GETS(cpu->PC + 1);
+				uaddr_t after_indir = pack(GETS(before_indir),
+										   GETS(before_indir + 1));
+                cpu->operand = after_indir + cpu->Y;
+                if (compare_pages(after_indir, cpu->operand) != 0) {
                     cpu->cycs_left++;
                 }
-                cpu->operand = get_actual_addr(cpu->memory, after_indir);
                 cpu->PC += 2;
                 break;
             }
+
             case ABS_Y: {
-                uaddr_t packed_addr = pack(program[cpu->PC + 2], program[cpu->PC + 1]);
-                cpu->operand = get_actual_addr(cpu->memory, 
-                            packed_addr + cpu->Y
-                );
-                if (program[cpu->PC + 1] + cpu->Y > 255) { // page crossing
+				cpu->operand = pack(GETS(cpu->PC + 2),
+									GETS(cpu->PC + 1) + cpu->Y);
+                if (GETS(cpu->PC + 1) + cpu->Y > 255) { // page crossing
                     cpu->cycs_left++;
                 }
                 cpu->PC += 3;
                 break;
             }
+
             case ACCUM: {
                 cpu->accum = true;
                 cpu->PC += 1;
                 break; 
             }
+
             default: {
                 cpu->PC += 1;
             }
@@ -328,14 +335,14 @@ int step(ucpu_t *cpu, byte_t *program) {
 
     // get the addressing mode
     addr_mode_t addr_mode = cpu->curr_addr_mode;
-    byte_t *operand = cpu->operand; 
+	uaddr_t operand = cpu->operand; 
     bool accum = cpu->accum; 
 
     switch (op) {
         case O_ADC: {
             // Apparently 6502 decimal mode is not supported on the NES?
             // If there are problems with ADC maybe refer back here.
-            unsigned long add = *operand + (unsigned long) get_flag(cpu, CARRY);
+            unsigned long add = GETS(operand) + (unsigned long) get_flag(cpu, CARRY);
             unsigned long temp = (unsigned long) cpu->A; // bad overflow detection
             cpu->A += add;
             unsigned long true_result = temp + add;
@@ -345,12 +352,14 @@ int step(ucpu_t *cpu, byte_t *program) {
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
         }
+
         case O_AND: {
-            cpu->A &= *operand;
+            cpu->A &= GETS(operand);
             set_flag(cpu, ZERO, cpu->A == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
         }
+					
         case O_ASL: { // a bit messy...
             byte_t val;
             if (cpu->accum) {
@@ -361,17 +370,18 @@ int step(ucpu_t *cpu, byte_t *program) {
                 set_flag(cpu, NEGATIVE, !sign(cpu->A));
                 break;
             }
-            val = *operand;
-            SETS(operand, (*operand << 1));
+            val = GETS(operand);
+            SETS(operand, (get_byte(cpu->buslink, operand) << 1));
             set_flag(cpu, CARRY, !!(val >> 7));
             set_flag(cpu, ZERO, cpu->A == 0);
-            set_flag(cpu, NEGATIVE, !sign(*operand));
+            set_flag(cpu, NEGATIVE, !sign(GETS(operand)));
             break;
         }
+
         case O_BCC: {
             // if carry bit clear... <==> cpu->C == 0??
             if (!get_flag(cpu, CARRY) || cpu->deferred) {
-                offset_t off = (offset_t) *operand;
+                offset_t off = (offset_t) get_byte(cpu->buslink, operand);
                 clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
                                 1 : 2;
                 DEFER(cpu, cycs); // defer 1 cycle on successful branch
@@ -382,9 +392,10 @@ int step(ucpu_t *cpu, byte_t *program) {
             }
             break;
         }
+
         case O_BCS: {
             if (get_flag(cpu, CARRY) || cpu->deferred) {
-                offset_t off = (offset_t) *operand;
+                offset_t off = (offset_t) GETS(operand);
                 clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
                                 1 : 2;
                 DEFER(cpu, cycs); // defer 1 cycle on successful branch
@@ -397,7 +408,7 @@ int step(ucpu_t *cpu, byte_t *program) {
         }
         case O_BEQ: {
             if (get_flag(cpu, ZERO) || cpu->deferred) {
-                offset_t off = (offset_t) *operand;
+                offset_t off = (offset_t) GETS(operand);
                 clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
                                 1 : 2;
                 DEFER(cpu, cycs); // defer 1 cycle on successful branch
@@ -408,16 +419,18 @@ int step(ucpu_t *cpu, byte_t *program) {
             }
             break;
         }
+
         case O_BIT: {
-            byte_t test = cpu->A & *operand;
+            byte_t test = cpu->A & GETS(operand);
             set_flag(cpu, ZERO, test == 0);
             set_flag(cpu, OVERFLOW, get_nth_bit(test, 6));
             set_flag(cpu, NEGATIVE, get_nth_bit(test, 7));
             break;
         }
+
         case O_BMI: {
             if (get_flag(cpu, NEGATIVE) || cpu->deferred) {
-                offset_t off = (offset_t) *operand;
+                offset_t off = (offset_t) GETS(operand);
                 clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
                                 1 : 2;
                 DEFER(cpu, cycs); // defer 1 cycle on successful branch
@@ -428,9 +441,10 @@ int step(ucpu_t *cpu, byte_t *program) {
             }
             break;
         }
+
         case O_BNE: {
             if (!get_flag(cpu, ZERO) || cpu->deferred) {
-                offset_t off = (offset_t) *operand;
+                offset_t off = (offset_t) GETS(operand);
                 clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
                                 1 : 2;
                 DEFER(cpu, cycs); // defer 1 cycle on successful branch
@@ -441,9 +455,10 @@ int step(ucpu_t *cpu, byte_t *program) {
             }
             break;
         }
+
         case O_BPL: {
             if (!get_flag(cpu, NEGATIVE) || cpu->deferred) {
-                offset_t off = (offset_t) *operand;
+                offset_t off = (offset_t) GETS(operand);
                 clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
                                 1 : 2;
                 DEFER(cpu, cycs); // defer 1 cycle on successful branch
@@ -454,9 +469,10 @@ int step(ucpu_t *cpu, byte_t *program) {
             }
             break;
         }
+
         case O_BVC: {
             if (!get_flag(cpu, OVERFLOW) || cpu->deferred) {
-                offset_t off = (offset_t) *operand;
+                offset_t off = (offset_t) GETS(operand);
                 clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
                                 1 : 2;
                 DEFER(cpu, cycs); // defer 1 cycle on successful branch
@@ -467,9 +483,10 @@ int step(ucpu_t *cpu, byte_t *program) {
             }
             break;
         }
+
         case O_BVS: {
             if (get_flag(cpu, OVERFLOW) || cpu->deferred) {
-                offset_t off = (offset_t) *operand;
+                offset_t off = (offset_t) GETS(operand);
                 clk_t cycs = compare_pages(cpu->PC, cpu->PC + off) == 0 ?
                                 1 : 2;
                 DEFER(cpu, cycs); // defer 1 cycle on successful branch
@@ -480,85 +497,100 @@ int step(ucpu_t *cpu, byte_t *program) {
             }
             break;
         }
+
         case O_CLC: {
             set_flag(cpu, CARRY, false);
             break;
         }
+
         case O_CLD: {
             set_flag(cpu, DECIMAL, false);
             break;
         }
+
         case O_CLI: {
             set_flag(cpu, INTERRUPT, false);
             break;
         }
+
         case O_CLV: {
             set_flag(cpu, OVERFLOW, false);
             break;
         }
+
         case O_CMP: { // Check this case later
-            byte_t comparison = cpu->A - *operand;
+            byte_t comparison = cpu->A - GETS(operand);
             set_flag(cpu, CARRY, sign(comparison));
             set_flag(cpu, ZERO, comparison == 0);
             set_flag(cpu, NEGATIVE, !sign(comparison));
             break;
         }
+
         case O_CPX: {
-            byte_t comparison = cpu->X - *operand;
+            byte_t comparison = cpu->X - GETS(operand);
             set_flag(cpu, CARRY, sign(comparison));
             set_flag(cpu, ZERO, comparison == 0);
             set_flag(cpu, NEGATIVE, !sign(comparison));
             break;
         }
+
         case O_CPY: {
-            byte_t comparison = cpu->Y - *operand;
+            byte_t comparison = cpu->Y - GETS(operand);
             set_flag(cpu, CARRY, sign(comparison));
             set_flag(cpu, ZERO, comparison == 0);
             set_flag(cpu, NEGATIVE, !sign(comparison));
             break;
         }
+
         case O_DEC: {
-            SETS(operand, *operand - 1);
-            set_flag(cpu, ZERO, *operand == 0);
-            set_flag(cpu, NEGATIVE, !sign(*operand));
+            SETS(operand, GETS(operand) - 1);
+            set_flag(cpu, ZERO, GETS(operand) == 0);
+            set_flag(cpu, NEGATIVE, !sign(GETS(operand)));
             break;
         }
+
         case O_DEX: {
             cpu->X--;
             set_flag(cpu, ZERO, cpu->X == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->X));
             break;
         }
+
         case O_DEY: {
             cpu->Y--;
             set_flag(cpu, ZERO, cpu->X == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->X));
             break;
         }
+
         case O_EOR: {
-            cpu->A ^= *operand;
+            cpu->A ^= GETS(operand);
             set_flag(cpu, ZERO, cpu->A == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
         }
+
         case O_INC: {
-            SETS(operand, *operand + 1);
-            set_flag(cpu, ZERO, *operand == 0);
-            set_flag(cpu, NEGATIVE, !sign(*operand));
+            SETS(operand, GETS(operand) + 1);
+            set_flag(cpu, ZERO, GETS(operand) == 0);
+            set_flag(cpu, NEGATIVE, !sign(GETS(operand)));
             break;
         }
+
         case O_INX: {
             cpu->X++;
             set_flag(cpu, ZERO, cpu->X == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->X));
             break;
         }
+
         case O_INY: {
             cpu->Y++;
             set_flag(cpu, ZERO, cpu->Y == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->Y));
             break;
         }
+
         case O_JMP: {
             /* 
              * Taken from nesdev.org:
@@ -572,34 +604,41 @@ int step(ucpu_t *cpu, byte_t *program) {
              * not at the end of the page.
              */
 #ifdef DEBUG
-            printf("jump to %x\n", *operand);
+            printf("jump to %x\n", GETS(operand));
 #endif
-            cpu->PC = *operand; // TODO: check this case
+            cpu->PC = GETS(operand); // TODO: check this case
+			if (cpu->indir)
+				cpu->PC = pack(GETS(operand + 1), cpu->PC);
             break;
         }
+
         case O_JSR: {
             push(cpu, cpu->PC + 2); // "+2" is NOT a typo.
-            cpu->PC = *operand;
+            cpu->PC = GETS(operand);
             break;
         }
+
         case O_LDA: {
-            cpu->A = *operand;
+            cpu->A = GETS(operand);
             set_flag(cpu, ZERO, cpu->A == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
         }
+
         case O_LDX: {
-            cpu->X = *operand;
+            cpu->X = GETS(operand);
             set_flag(cpu, ZERO, cpu->X == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->X));
             break;
         }
+
         case O_LDY: {
-            cpu->Y = *operand;
+            cpu->Y = GETS(operand);
             set_flag(cpu, ZERO, cpu->Y == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->Y));
             break;
         }
+
         case O_LSR: { // a bit messy...
             if (cpu->accum) {
                 bool carry = cpu->A % 2;
@@ -608,34 +647,40 @@ int step(ucpu_t *cpu, byte_t *program) {
                 set_flag(cpu, ZERO, cpu->A == 0);
                 break;
             }
-            bool carry = *operand % 2;
-            SETS(operand, *operand >> 1);
+            bool carry = GETS(operand) % 2;
+            SETS(operand, GETS(operand) >> 1);
             set_flag(cpu, CARRY, carry);
-            set_flag(cpu, ZERO, *operand == 0);
+            set_flag(cpu, ZERO, GETS(operand) == 0);
             break;
         }
+
         case O_ORA: {
-            cpu->A |= *operand;
+            cpu->A |= GETS(operand);
             set_flag(cpu, ZERO, cpu->A == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
         }
+
         case O_PHA: {
             push(cpu, cpu->A);
             break;
         }
+
         case O_PHP: {
             push(cpu, cpu->status);
             break;
         }
+
         case O_PLA: {
             cpu->A = pop(cpu);
             break;
         }
+
         case O_PLP: {
             cpu->status = pop(cpu);
             break;
         }
+
         case O_ROL: {
             uregr_t carry_r = (uregr_t) get_nth_bit(cpu->status, CARRY);
             if (cpu->accum) {
@@ -644,13 +689,14 @@ int step(ucpu_t *cpu, byte_t *program) {
                 cpu->A |= carry_r;
                 set_flag(cpu, NEGATIVE, !sign(cpu->A));
             } else {
-                set_flag(cpu, CARRY, get_nth_bit(*operand, 0));
-                SETS(operand, (*operand << 1) | carry_r);
-                set_flag(cpu, NEGATIVE, !sign(*operand));
+                set_flag(cpu, CARRY, get_nth_bit(GETS(operand), 0));
+                SETS(operand, (GETS(operand) << 1) | carry_r);
+                set_flag(cpu, NEGATIVE, !sign(GETS(operand)));
             }
             set_flag(cpu, ZERO, cpu->A == 0); // TODO: might be a typo in the spec?
             break;
         }
+
         case O_ROR: {
             uregr_t carry = (uregr_t) get_nth_bit(cpu->status, CARRY);
             if (cpu->accum) {
@@ -659,13 +705,14 @@ int step(ucpu_t *cpu, byte_t *program) {
                 cpu->A |= (carry << 7);
                 set_flag(cpu, NEGATIVE, !sign(cpu->A));
             } else {
-                set_flag(cpu, CARRY, get_nth_bit(*operand, 0));
-                SETS(operand, (*operand >> 1) | (carry << 7));
-                set_flag(cpu, NEGATIVE, !sign(*operand));
+                set_flag(cpu, CARRY, get_nth_bit(GETS(operand), 0));
+                SETS(operand, (GETS(operand) >> 1) | (carry << 7));
+                set_flag(cpu, NEGATIVE, !sign(GETS(operand)));
             }
             set_flag(cpu, ZERO, cpu->A == 0); // see above
             break;
         }
+
         case O_RTI: {
             ustat_t stat = pop(cpu);
             bool orig_brk = get_nth_bit(cpu->status, BREAK);
@@ -674,12 +721,14 @@ int step(ucpu_t *cpu, byte_t *program) {
             cpu->PC = pop(cpu);
             break;
         }
+
         case O_RTS: {
             cpu->PC = pop(cpu) + 1;
             break;
         }
+
         case O_SBC: { // surely the most beautiful code ever that surely works 100% fine
-            unsigned long add = *operand + (unsigned long) get_flag(cpu, CARRY);
+            unsigned long add = GETS(operand) + (unsigned long) get_flag(cpu, CARRY);
             add = ~add + 1;
             unsigned long temp = (unsigned long) cpu->A; // bad overflow detection
             cpu->A += add;
@@ -690,64 +739,79 @@ int step(ucpu_t *cpu, byte_t *program) {
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
         }
+
         case O_SEC: {
             set_flag(cpu, CARRY, true);
             break;
         }
+
         case O_SED: {
             set_flag(cpu, DECIMAL, true);
             break;
         }
+
         case O_SEI: {
             set_flag(cpu, INTERRUPT, true);
             break;
         }
+
         case O_STA: {
             SETS(operand, cpu->A);
             break;
         }
+
         case O_STX: {
             SETS(operand, cpu->X);
             break;
         }
+
         case O_STY: {
             SETS(operand, cpu->Y);
             break;
         }
+
         case O_TAX: {
             cpu->X = cpu->A;
             set_flag(cpu, ZERO, cpu->X == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->X));
             break;
         }
+
         case O_TAY: {
             cpu->X = cpu->A;
             set_flag(cpu, ZERO, cpu->X == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->X));
             break;
         }
+
         case O_TXA: {
             cpu->A = cpu->X;
             set_flag(cpu, ZERO, cpu->A == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
         }
+
         case O_TXS: {
             cpu->S = cpu->X;
             break;
         }
+
         case O_TYA: {
             cpu->A = cpu->Y;
             set_flag(cpu, ZERO, cpu->A == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
         }
+
         case O_BRK: {
             push(cpu, cpu->PC + 2);
             set_flag(cpu, BREAK, true);
             push(cpu, cpu->status);
-            return 1; // for now, at least
+            cpu->PC = pack(GETS(BRK_VECTOR) + 1,
+						   GETS(BRK_VECTOR));
+			break;
         }
+					
         default: {
             break;
         }
