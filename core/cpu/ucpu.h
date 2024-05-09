@@ -35,8 +35,8 @@
  * to 0x69. Then we will switch on these opcodes in a 56-case
  * switch statement.
  *
- * Macros are used over enums here for reasons I will document later.
- * I've divided macros into groups of eight for the sake of readability.
+ * Macros are used over enums here because I am dumb.
+ * TODO: become not dumb and refactor later.
  */
 #define O_ADC 0x69
 #define O_AND 0x29
@@ -111,6 +111,8 @@
 #define RST_VECTOR 0xFFFC
 #define NMI_VECTOR 0xFFFA
 
+#define STACK_OFFSET 0x0100
+
 /* GLOBALS */
 
 /*
@@ -142,6 +144,7 @@ typedef enum {
     INTERRUPT = 2,
     DECIMAL = 3,
     BREAK = 4,
+    FIVE = 5,
     OVERFLOW = 6,
     NEGATIVE = 7
 } flag_t;

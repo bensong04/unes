@@ -99,8 +99,22 @@ static int min(int a, int b) {
 /**
  * @brief
  */
-static inline uaddr_t pack(byte_t large, byte_t small) {
-    return (large << 8) | (small);
+static inline uaddr_t pack(uaddr_t large, uaddr_t small) {
+    return (large << 8) + (small);
+}
+
+/**
+ * @brief
+ */
+static inline byte_t high(uaddr_t dword) {
+    return (dword >> 8);
+}
+
+/**
+ * @brief
+ */
+static inline byte_t low(uaddr_t dword) {
+    return (byte_t) (dword % 256);
 }
 
 /**
@@ -176,21 +190,18 @@ void init_cpu(ucpu_t *cpu) {
 }
 
 void push(ucpu_t *cpu, byte_t what) {
-    if (cpu->S == 0x00FF) {
-        UERRNO = ERR_STACK_OVERFLOW;
-        return;
-    }
-    set_byte(cpu->buslink, cpu->S, what);
+    // TODO: check for stack overflows
+    SETS(cpu->S + STACK_OFFSET, what);
     cpu->S--;
 }
 
 byte_t pop(ucpu_t *cpu) {
-    if (cpu->S == 0x01FF) {
+    if (cpu->S == 0x00FF) {
         UERRNO = ERR_STACK_UNDERFLOW;
         return 0x00;
     }
     cpu->S++;
-    return GETS(cpu->S);
+    return GETS(cpu->S + STACK_OFFSET);
 }
 
 /**
@@ -207,16 +218,22 @@ int step(ucpu_t *cpu) {
         // interpret the next instruction and reset the state machine 
         // get the current opcode
         opcode_t op = GETS(cpu->PC); // asks the bus what byte is at position PC
-													   // and interprets this as the current instruction.
+									 // and interprets this as the current instruction.
+        printf("op: %" PRIu8 " next: %" PRIu8 " %" PRIu8 "\n", GETS(cpu->PC),
+                                                               GETS(cpu->PC + 1),
+                                                               GETS(cpu->PC + 2));
 #ifdef DEBUG
-        printf("OP: %x\n", op);
-        dump_cpu(stdout, cpu);
-        printf("\n");
+        // printf("OP: %x\n", op);
+        // dump_cpu(stdout, cpu);
+        // printf("\n");
 #endif
         // get the actual operation class
         cpu->curr_canon = OPCODE_TO_CANONICAL[op];
         if (cpu->curr_canon == O_DNE) {
             fprintf(stderr, "Unrecognized instruction %x, exiting!\n", op);
+#ifdef CPU_TESTS
+            exit(3);
+#endif
             return 1;
         }
         // initialize number of cycles
@@ -267,22 +284,24 @@ int step(ucpu_t *cpu) {
 				cpu->indir = true;
 			case ABS: {
 				cpu->operand = pack(GETS(cpu->PC + 2),
-									 GETS(cpu->PC + 1));
+									GETS(cpu->PC + 1));
 				cpu->PC += 3;
                 break;
             }
 
             case INDIR_X: {
-				cpu->operand = pack(GETS(cpu->PC + 1) + cpu->X + 1,
-							 		GETS(cpu->PC + 1) + cpu->X);
+                uaddr_t before_indir = (GETS(cpu->PC + 1) + cpu->X) % 256; 
+				cpu->operand = pack(GETS(before_indir + 1),
+                                    GETS(before_indir));
                 cpu->PC += 2;
                 break;
             }
 
             case ABS_X: {
+				uaddr_t indexed = (uaddr_t) GETS(cpu->PC + 1) + (uaddr_t) cpu->X;
 				cpu->operand = pack(GETS(cpu->PC + 2),
-									GETS(cpu->PC + 1) + cpu->X);
-                if (GETS(cpu->PC + 1) + cpu->X > 255) { // page crossing
+									indexed);
+                if (indexed > 255) { // page crossing
                     cpu->cycs_left++;
                 }
                 cpu->PC += 3;
@@ -291,8 +310,8 @@ int step(ucpu_t *cpu) {
 			
             case INDIR_Y: {
                 uaddr_t before_indir = GETS(cpu->PC + 1);
-				uaddr_t after_indir = pack(GETS(before_indir),
-										   GETS(before_indir + 1));
+				uaddr_t after_indir = pack(GETS(before_indir + 1),
+										   GETS(before_indir));
                 cpu->operand = after_indir + cpu->Y;
                 if (compare_pages(after_indir, cpu->operand) != 0) {
                     cpu->cycs_left++;
@@ -302,9 +321,10 @@ int step(ucpu_t *cpu) {
             }
 
             case ABS_Y: {
+                uaddr_t indexed = (uaddr_t) GETS(cpu->PC + 1) + (uaddr_t) cpu->Y;
 				cpu->operand = pack(GETS(cpu->PC + 2),
-									GETS(cpu->PC + 1) + cpu->Y);
-                if (GETS(cpu->PC + 1) + cpu->Y > 255) { // page crossing
+									indexed);
+                if (indexed > 255) { // page crossing
                     cpu->cycs_left++;
                 }
                 cpu->PC += 3;
@@ -324,6 +344,9 @@ int step(ucpu_t *cpu) {
         // wait the necessary number of cycles
         return 0;
     }
+#ifdef CPU_TESTS
+    printf("Executing...\n");
+#endif
     // set clock to 0
     cpu->cycs_left--;
 
@@ -371,9 +394,9 @@ int step(ucpu_t *cpu) {
                 break;
             }
             val = GETS(operand);
-            SETS(operand, (get_byte(cpu->buslink, operand) << 1));
+            SETS(operand, (val << 1));
             set_flag(cpu, CARRY, !!(val >> 7));
-            set_flag(cpu, ZERO, cpu->A == 0);
+            set_flag(cpu, ZERO, GETS(operand) == 0);
             set_flag(cpu, NEGATIVE, !sign(GETS(operand)));
             break;
         }
@@ -421,10 +444,11 @@ int step(ucpu_t *cpu) {
         }
 
         case O_BIT: {
-            byte_t test = cpu->A & GETS(operand);
+            byte_t mem = GETS(operand);
+            byte_t test = cpu->A & mem;
             set_flag(cpu, ZERO, test == 0);
-            set_flag(cpu, OVERFLOW, get_nth_bit(test, 6));
-            set_flag(cpu, NEGATIVE, get_nth_bit(test, 7));
+            set_flag(cpu, OVERFLOW, get_nth_bit(mem, 6));
+            set_flag(cpu, NEGATIVE, get_nth_bit(mem, 7));
             break;
         }
 
@@ -613,8 +637,9 @@ int step(ucpu_t *cpu) {
         }
 
         case O_JSR: {
-            push(cpu, cpu->PC + 2); // "+2" is NOT a typo.
-            cpu->PC = GETS(operand);
+            push(cpu, high(cpu->PC - 1)); // "-1" is NOT a typo.
+            push(cpu, low(cpu->PC - 1)); 
+            cpu->PC = operand; // again, NOT a typo!!
             break;
         }
 
@@ -667,7 +692,13 @@ int step(ucpu_t *cpu) {
         }
 
         case O_PHP: {
+            // fifth bit always set before pushing
+            set_flag(cpu, FIVE, true);
+            // B always set when pushed via PHP
+            bool prev_brk = get_flag(cpu, BREAK);
+            set_flag(cpu, BREAK, true);
             push(cpu, cpu->status);
+            set_flag(cpu, BREAK, prev_brk);
             break;
         }
 
@@ -678,22 +709,24 @@ int step(ucpu_t *cpu) {
 
         case O_PLP: {
             cpu->status = pop(cpu);
+            set_flag(cpu, FIVE, true);
             break;
         }
 
         case O_ROL: {
             uregr_t carry_r = (uregr_t) get_nth_bit(cpu->status, CARRY);
             if (cpu->accum) {
-                set_flag(cpu, CARRY, get_nth_bit(cpu->A, 0));
+                set_flag(cpu, CARRY, get_nth_bit(cpu->A, 7));
                 cpu->A <<= 1; // you can do this?! :O
                 cpu->A |= carry_r;
                 set_flag(cpu, NEGATIVE, !sign(cpu->A));
+                set_flag(cpu, ZERO, cpu->A == 0);
             } else {
-                set_flag(cpu, CARRY, get_nth_bit(GETS(operand), 0));
+                set_flag(cpu, CARRY, get_nth_bit(GETS(operand), 7));
                 SETS(operand, (GETS(operand) << 1) | carry_r);
                 set_flag(cpu, NEGATIVE, !sign(GETS(operand)));
+                set_flag(cpu, ZERO, GETS(operand) == 0); 
             }
-            set_flag(cpu, ZERO, cpu->A == 0); // TODO: might be a typo in the spec?
             break;
         }
 
@@ -704,12 +737,13 @@ int step(ucpu_t *cpu) {
                 cpu->A >>= 1; // wheee
                 cpu->A |= (carry << 7);
                 set_flag(cpu, NEGATIVE, !sign(cpu->A));
+                set_flag(cpu, ZERO, cpu->A == 0);
             } else {
                 set_flag(cpu, CARRY, get_nth_bit(GETS(operand), 0));
                 SETS(operand, (GETS(operand) >> 1) | (carry << 7));
                 set_flag(cpu, NEGATIVE, !sign(GETS(operand)));
+                set_flag(cpu, ZERO, GETS(operand) == 0);
             }
-            set_flag(cpu, ZERO, cpu->A == 0); // see above
             break;
         }
 
@@ -718,7 +752,9 @@ int step(ucpu_t *cpu) {
             bool orig_brk = get_nth_bit(cpu->status, BREAK);
             cpu->status = stat;
             set_flag(cpu, BREAK, orig_brk); // ignore pulled BREAK bit
-            cpu->PC = pop(cpu);
+            uaddr_t low = pop(cpu);
+            uaddr_t high = pop(cpu);
+            cpu->PC = pack(high, low);
             break;
         }
 
@@ -816,7 +852,7 @@ int step(ucpu_t *cpu) {
             break;
         }
     }
-    return 0;
+    return -1;
 }
 
 void dump_cpu(FILE *out, ucpu_t *cpu) {

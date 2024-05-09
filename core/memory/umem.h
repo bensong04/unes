@@ -20,6 +20,11 @@
 #define UCPU_MEM_CAP (2048)
 
 /*
+ * Macro for Tom Harte CPU unit tests.
+ */
+#define TH_UNITTEST_MEM_CAP (1024 * 64)
+
+/*
  * The NES's memory will be filled with UNILs when it is initialized.
  */
 #define UNIL 0x00
@@ -74,7 +79,7 @@ typedef struct buslink {
 
 bus_t new_bus();
 
-void link(buslink_t *link, bus_t *bus);
+void link_device(buslink_t *link, bus_t *bus);
 
 void set_byte(buslink_t link, uaddr_t which, byte_t what);
 byte_t get_byte(buslink_t link, uaddr_t which);

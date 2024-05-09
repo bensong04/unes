@@ -28,7 +28,7 @@ ram_t alloc_ram(size_t how_much) {
 bus_t new_bus() {
 	bus_t bus = { NULL, NULL };
 #ifdef CPU_TESTS
-	bus.cpu_ram = alloc_ram(UCPU_MEM_CAP);	
+	bus.cpu_ram = alloc_ram(TH_UNITTEST_MEM_CAP);	
 #endif
 	// not implemented
 	return bus;
@@ -40,7 +40,7 @@ bus_t new_bus() {
  * A device should pass in a reference to its buslink, as well as
  * the (singleton) bus to which it wants to link itself.
  */
-void link(buslink_t *link, bus_t *bus) {
+void link_device(buslink_t *link, bus_t *bus) {
     link->bus = bus;
 }
 
@@ -50,9 +50,14 @@ void link(buslink_t *link, bus_t *bus) {
 void set_byte(buslink_t link, uaddr_t which, byte_t what) {
     bus_t *bus = link.bus;
     switch (link.device) {
-        case DEV_CPU:
+        case DEV_CPU: {
+#ifdef CPU_TESTS
+            printf("Address %" PRIu16 " set to %" PRIu8 ".\n",
+                    which, what);
+#endif
             bus->cpu_ram[which] = what;
             break;
+        }
     }
 }
 
@@ -62,8 +67,14 @@ void set_byte(buslink_t link, uaddr_t which, byte_t what) {
 byte_t get_byte(buslink_t link, uaddr_t which) {
     bus_t *bus = link.bus;
     switch (link.device) {
-        case DEV_CPU:
+        case DEV_CPU: {
+#ifdef CPU_TESTS
+            // printf("Read %" PRIu8 " at address %" PRIu16 ".\n",
+                    // bus->cpu_ram[which], which);
+#endif
             return bus->cpu_ram[which];
+            break;
+        }
     }
 }
 
