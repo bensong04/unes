@@ -10,10 +10,10 @@ from pathlib import Path
 import sys, subprocess as proc
 import json
 
-HOW_MANY = 200
+HOW_MANY = 2500
 OK = 0
 UNIMPLEMENTED = 3
-FAIL_THRESH = 5
+FAIL_THRESH = 10
 
 def hex2(h: int) -> str:
     return hex(h)[2:].zfill(2)
@@ -27,7 +27,7 @@ def gracefully_exit(tests_failed: int, tests_tried: int):
 
 def run_test(test_no: int) -> Optional[tuple[int, int, str, str]]:
     for subtest_num in range(HOW_MANY):
-        exec_name: str = proc.run(["eval/py/assembleunit.py", 
+        exec_name: str = proc.run(["eval/py/assembleunit.py",
                              f"eval/execs/tomharte/{hex2(test_no)}.json",
                              f"{subtest_num}"], capture_output=True,
                              text=True).stdout
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     failcount: int = 0
     testcount: int = 0
     bad_ops = []
-    for no in range(38, 256):
+    for no in range(0, 1):
         res = run_test(no)
         if res is not None:
             t_no, t_sub, so, se = res

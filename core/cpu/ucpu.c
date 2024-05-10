@@ -38,7 +38,7 @@ static const addr_mode_t OPCODE_TO_CANONICAL[] = {
     O_DNE, O_STA, O_DNE, O_DNE, O_STY, O_STA, O_STX, O_DNE, O_DEY, O_DNE, O_TXA, O_DNE, O_STY, O_STA, O_STX, O_DNE,
     O_BCC, O_STA, O_DNE, O_DNE, O_STY, O_STA, O_STX, O_DNE, O_TYA, O_STA, O_TXS, O_DNE, O_DNE, O_STA, O_DNE, O_DNE,
     O_LDY, O_LDA, O_LDX, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE, O_TAY, O_LDA, O_TAX, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE,
-    O_BCS, O_LDA, O_DNE, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE, O_TSX, O_LDA, O_DNE, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE,
+    O_BCS, O_LDA, O_DNE, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE, O_CLV, O_LDA, O_DNE, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE,
     O_CPY, O_CMP, O_DNE, O_DNE, O_CPY, O_CMP, O_DEC, O_DNE, O_INY, O_CMP, O_DEX, O_DNE, O_CPY, O_CMP, O_DEC, O_DNE,
     O_BNE, O_CMP, O_DNE, O_DNE, O_DNE, O_CMP, O_DEC, O_DNE, O_CLD, O_CMP, O_DNE, O_DNE, O_DNE, O_CMP, O_DEC, O_DNE,
     O_CPX, O_SBC, O_DNE, O_DNE, O_CPX, O_SBC, O_INC, O_DNE, O_INX, O_SBC, O_NOP, O_DNE, O_CPX, O_SBC, O_INC, O_DNE,
@@ -54,7 +54,7 @@ static const uint8_t OPCODE_TO_ADDRMODE[] = {
     ABS, INDIR_X, 0, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, ABS, ABS, ABS, 0,
     REL, INDIR_Y_RO, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y_RO, 0, 0, 0, ABS_X_RO, ABS_X, 0,
     IMPL, INDIR_X, 0, 0, 0, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, ABS, ABS, ABS, 0,
-    REL, INDIR_Y_RO, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y, 0, 0, 0, ABS_X_RO, ABS_X, 0,
+    REL, INDIR_Y_RO, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y_RO, 0, 0, 0, ABS_X_RO, ABS_X, 0,
     IMPL, INDIR_X, 0, 0, 0, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, INDIR, ABS, ABS, 0,
     0, INDIR_Y_RO, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y_RO, 0, 0, 0, ABS_X_RO, ABS_X, 0,
     0, INDIR_X, 0, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, 0, IMPL, 0, ABS, ABS, ABS, 0,
@@ -221,11 +221,6 @@ int step(ucpu_t *cpu) {
         printf("op: %" PRIu8 " next: %" PRIu8 " %" PRIu8 "\n", GETS(cpu->PC),
                                                                GETS(cpu->PC + 1),
                                                                GETS(cpu->PC + 2));
-#ifdef DEBUG
-        // printf("OP: %x\n", op);
-        // dump_cpu(stdout, cpu);
-        // printf("\n");
-#endif
         // get the actual operation class
         cpu->curr_canon = OPCODE_TO_CANONICAL[op];
         if (cpu->curr_canon == O_DNE) {
@@ -290,7 +285,7 @@ int step(ucpu_t *cpu) {
 
             case INDIR_X: {
                 uaddr_t before_indir = (GETS(cpu->PC + 1) + cpu->X) % 256;
-				cpu->operand = pack(GETS(before_indir + 1),
+				cpu->operand = pack(GETS((before_indir + 1) % 256),
                                     GETS(before_indir));
                 cpu->PC += 2;
                 break;
@@ -387,14 +382,16 @@ int step(ucpu_t *cpu) {
 
     switch (op) {
         case O_ADC: {
+            // OVERFLOW BIT IS NOT SET PROPERLY
             // Apparently 6502 decimal mode is not supported on the NES?
             // If there are problems with ADC maybe refer back here.
-            unsigned long add = GETS(operand) + (unsigned long) get_flag(cpu, CARRY);
-            unsigned long temp = (unsigned long) cpu->A; // bad overflow detection
-            cpu->A += add;
-            unsigned long true_result = temp + add;
-            set_flag(cpu, OVERFLOW, (true_result != cpu->A));
-            set_flag(cpu, CARRY, !!(true_result >> (sizeof(uregr_t)*8)));
+            byte_t oper = GETS(operand);
+            bool carry = get_flag(cpu, CARRY);
+            unsigned long addition = (unsigned long) cpu->A + oper + carry;
+            set_flag(cpu, CARRY, !!(addition & (1u << 8)));
+            // stolen from stackoverflow lmao
+            set_flag(cpu, OVERFLOW, ~(cpu->A ^ oper) & (cpu->A ^ addition) & 0x80);
+            cpu->A = (uregr_t) addition;
             set_flag(cpu, ZERO, cpu->A == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
@@ -567,25 +564,28 @@ int step(ucpu_t *cpu) {
             break;
         }
 
-        case O_CMP: { // Check this case later
-            byte_t comparison = cpu->A - GETS(operand);
-            set_flag(cpu, CARRY, sign(comparison));
+        case O_CMP: {
+            byte_t oper = GETS(operand);
+            byte_t comparison = cpu->A - oper;
+            set_flag(cpu, CARRY, cpu->A >= oper);
             set_flag(cpu, ZERO, comparison == 0);
             set_flag(cpu, NEGATIVE, !sign(comparison));
             break;
         }
 
         case O_CPX: {
-            byte_t comparison = cpu->X - GETS(operand);
-            set_flag(cpu, CARRY, sign(comparison));
+            byte_t oper = GETS(operand);
+            byte_t comparison = cpu->X - oper;
+            set_flag(cpu, CARRY, cpu->X >= oper);
             set_flag(cpu, ZERO, comparison == 0);
             set_flag(cpu, NEGATIVE, !sign(comparison));
             break;
         }
 
         case O_CPY: {
-            byte_t comparison = cpu->Y - GETS(operand);
-            set_flag(cpu, CARRY, sign(comparison));
+            byte_t oper = GETS(operand);
+            byte_t comparison = cpu->Y - oper;
+            set_flag(cpu, CARRY, cpu->Y >= oper);
             set_flag(cpu, ZERO, comparison == 0);
             set_flag(cpu, NEGATIVE, !sign(comparison));
             break;
@@ -607,8 +607,8 @@ int step(ucpu_t *cpu) {
 
         case O_DEY: {
             cpu->Y--;
-            set_flag(cpu, ZERO, cpu->X == 0);
-            set_flag(cpu, NEGATIVE, !sign(cpu->X));
+            set_flag(cpu, ZERO, cpu->Y == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->Y));
             break;
         }
 
@@ -655,9 +655,10 @@ int step(ucpu_t *cpu) {
 #ifdef DEBUG
             printf("jump to %x\n", GETS(operand));
 #endif
-            cpu->PC = GETS(operand); // TODO: check this case
 			if (cpu->indir)
-				cpu->PC = pack(GETS(operand + 1), cpu->PC);
+				cpu->PC = pack(GETS(operand + 1), GETS(operand));
+			else
+			    cpu->PC = operand;
             break;
         }
 
@@ -690,6 +691,7 @@ int step(ucpu_t *cpu) {
         }
 
         case O_LSR: { // a bit messy...
+            set_flag(cpu, NEGATIVE, false);
             if (cpu->accum) {
                 bool carry = cpu->A % 2;
                 cpu->A = cpu->A >> 1;
@@ -729,6 +731,8 @@ int step(ucpu_t *cpu) {
 
         case O_PLA: {
             cpu->A = pop(cpu);
+            set_flag(cpu, ZERO, cpu->A == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
         }
 
@@ -776,9 +780,11 @@ int step(ucpu_t *cpu) {
 
         case O_RTI: {
             ustat_t stat = pop(cpu);
+            bool orig_five = get_nth_bit(cpu->status, FIVE);
             bool orig_brk = get_nth_bit(cpu->status, BREAK);
             cpu->status = stat;
             set_flag(cpu, BREAK, orig_brk); // ignore pulled BREAK bit
+            set_flag(cpu, FIVE, orig_five); // ditto
             uaddr_t low = pop(cpu);
             uaddr_t high = pop(cpu);
             cpu->PC = pack(high, low);
@@ -786,18 +792,20 @@ int step(ucpu_t *cpu) {
         }
 
         case O_RTS: {
-            cpu->PC = pop(cpu) + 1;
+            byte_t low = pop(cpu);
+            byte_t high = pop(cpu);
+            cpu->PC = pack(high, low) + 1;
             break;
         }
 
         case O_SBC: { // surely the most beautiful code ever that surely works 100% fine
-            unsigned long add = GETS(operand) + (unsigned long) get_flag(cpu, CARRY);
-            add = ~add + 1;
-            unsigned long temp = (unsigned long) cpu->A; // bad overflow detection
-            cpu->A += add;
-            unsigned long true_result = temp + add;
-            set_flag(cpu, OVERFLOW, (true_result != cpu->A));
-            set_flag(cpu, CARRY, !!(true_result >> (sizeof(uregr_t)*8)));
+            byte_t oper = ~GETS(operand);
+            bool carry = get_flag(cpu, CARRY);
+            unsigned long addition = (unsigned long) cpu->A + oper + carry;
+            set_flag(cpu, CARRY, !!(addition & (1u << 8)));
+            // stolen from stackoverflow lmao
+            set_flag(cpu, OVERFLOW, ~(cpu->A ^ oper) & (cpu->A ^ addition) & 0x80);
+            cpu->A = (uregr_t) addition;
             set_flag(cpu, ZERO, cpu->A == 0);
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
@@ -841,9 +849,9 @@ int step(ucpu_t *cpu) {
         }
 
         case O_TAY: {
-            cpu->X = cpu->A;
-            set_flag(cpu, ZERO, cpu->X == 0);
-            set_flag(cpu, NEGATIVE, !sign(cpu->X));
+            cpu->Y = cpu->A;
+            set_flag(cpu, ZERO, cpu->Y == 0);
+            set_flag(cpu, NEGATIVE, !sign(cpu->Y));
             break;
         }
 
@@ -867,10 +875,13 @@ int step(ucpu_t *cpu) {
         }
 
         case O_BRK: {
-            push(cpu, cpu->PC + 2);
+            push(cpu, high(cpu->PC + 1));
+            push(cpu, low(cpu->PC + 1));
+            bool original_brk = get_flag(cpu, BREAK);
             set_flag(cpu, BREAK, true);
             push(cpu, cpu->status);
-            cpu->PC = pack(GETS(BRK_VECTOR) + 1,
+            set_flag(cpu, BREAK, original_brk);
+            cpu->PC = pack(GETS(BRK_VECTOR + 1),
 						   GETS(BRK_VECTOR));
 			break;
         }

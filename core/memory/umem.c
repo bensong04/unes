@@ -72,8 +72,8 @@ byte_t get_byte(buslink_t link, uaddr_t which) {
     switch (link.device) {
         case DEV_CPU: {
 #ifdef CPU_TESTS
-            printf("Read %" PRIu8 " at address %" PRIu16 ".\n",
-                    bus->cpu_ram[which], which);
+            //printf("Read %" PRIu8 " at address %" PRIu16 ".\n",
+                    //bus->cpu_ram[which], which);
 #endif
             return bus->cpu_ram[which];
             break;
