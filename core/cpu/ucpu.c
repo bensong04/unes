@@ -883,7 +883,7 @@ int step(ucpu_t *cpu) {
             set_flag(cpu, BREAK, original_brk);
             cpu->PC = pack(GETS(BRK_VECTOR + 1),
 						   GETS(BRK_VECTOR));
-			break;
+            break;
         }
 
         default: {
