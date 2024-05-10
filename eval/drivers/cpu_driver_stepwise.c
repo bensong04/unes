@@ -1,7 +1,7 @@
 /**
  * @file
- * @brief 
- * 
+ * @brief
+ *
  * The following C code is objectively awful. Avert your eyes when necessary.
  *
  * @author Benedict Song <benedict04song@gmail.com>
@@ -24,13 +24,13 @@ typedef struct cpu_state {
     uregr_t A;
     uregr_t X;
     uregr_t Y;
-    uaddr_t S;
+    uregr_t S;
     ustat_t status;
-} cpu_state_t; 
+} cpu_state_t;
 
 void dump_cpu_state(FILE *out, cpu_state_t stat) {
      fprintf(out, "PC: %" PRIu16 " A: %" PRIu8 " X: %" PRIu8 " "
-                "Y: %" PRIu8 " S: %" PRIu16 " status: %" PRIu8 "\n",
+                "Y: %" PRIu8 " S: %" PRIu8 " status: %" PRIu8 "\n",
                 stat.PC, stat.A, stat.X, stat.Y, stat.S, stat.status
             );
 }
@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
 
     fseek(unittest, 0, SEEK_END);
     size_t unitlen = ftell(unittest);
-    rewind(unittest); 
+    rewind(unittest);
 
     if (unitlen < sizeof(cpu_state_t)*2 + 2) {
         // insufficient to setup the CPU
@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
     // setup everything
     ucpu_t cpu;
     init_cpu(&cpu);
-	
+
 	bus_t bus = new_bus();
 
 	link_device(&cpu.buslink, &bus); // this is fine I think?
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
     uint16_t memcontent_size = 0;
     fread(&memcontent_size, 2, 1, unittest);
     uint16_t *mem_validation = malloc(memcontent_size * sizeof(uint16_t) * 2);
-    
+
     cpu_state_t stat, stat_expected = { 0 };
     // yucky
     fread(&stat.PC, 2, 1, unittest);
@@ -106,13 +106,13 @@ int main(int argc, char **argv) {
     fread(&stat_expected.X, 1, 1, unittest);
 
     fread(&stat.Y, 1, 1, unittest);
-    fread(&stat_expected.Y, 1, 1, unittest); 
+    fread(&stat_expected.Y, 1, 1, unittest);
 
     fread(&stat.status, 1, 1, unittest);
     fread(&stat_expected.status, 1, 1, unittest);
 
-    fread(&stat.S, 2, 1, unittest);
-    fread(&stat_expected.S, 2, 1, unittest);
+    fread(&stat.S, 1, 1, unittest);
+    fread(&stat_expected.S, 1, 1, unittest);
 
     preset_cpu_state(&cpu, stat);
 
@@ -132,12 +132,12 @@ int main(int argc, char **argv) {
         fread(&byte_what, sizeof(uint16_t), 1, unittest);
         fread(mem_validation + mem_idx + 1, sizeof(uaddr_t), 1, unittest);
 
-        preset_bus_byte(&bus, byte_where, (byte_t) byte_what); 
+        preset_bus_byte(&bus, byte_where, (byte_t) byte_what);
         mem_idx += 2;
-    }    
+    }
 
     printf("Cycling CPU %llu times.\n\n", cycs);
-    
+
     clk_t cyc;
     for (cyc = 0; cyc < cycs; cyc++) {
         if (step(&cpu) != 0) break;
@@ -159,12 +159,12 @@ int main(int argc, char **argv) {
         printf("The CPU is in an unexpected state.\n");
         passed = false;
     }
-    
+
     for (size_t midx; midx < memcontent_size * 2; midx += 2) {
         uaddr_t mloc = mem_validation[midx];
         byte_t mexpect = (byte_t) mem_validation[midx + 1];
         if (get_byte(cpu.buslink, mloc) != mexpect) {
-            printf("\nMemory contents differ: ADDRESS %" PRIu16 " EXPECTED %" PRIu8 
+            printf("\nMemory contents differ: ADDRESS %" PRIu16 " EXPECTED %" PRIu8
                    " GOT %" PRIu8 ".", mloc, mexpect, get_byte(cpu.buslink, mloc));
             passed = false;
         }

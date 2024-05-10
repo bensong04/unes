@@ -17,7 +17,7 @@ def parse_json_to_binary(json_filename, binary_filename):
 
     # Prepare the number of cycles as the first byte
     num_cycles = len(cycles)
-    
+
     # Extract data from the "initial" object
     PC = initial['pc']
     s = initial['s']
@@ -38,15 +38,15 @@ def parse_json_to_binary(json_filename, binary_filename):
     # Open a binary file for writing
     with open(binary_filename, 'wb') as bin_file:
         bin_file.write(struct.pack('<BH', num_cycles, len(ram)))
-        
+
         # Write PC and p as two bytes each, and s, a, x, y as one byte each
-        bin_file.write(struct.pack('<HHBBBBBBBBHH', PC, PC_expected,
+        bin_file.write(struct.pack('<HHBBBBBBBBBB', PC, PC_expected,
                                                    a, a_expected,
                                                    x, x_expected,
                                                    y, y_expected,
                                                    p, p_expected,
                                                    s, s_expected))
-        
+
         # Write each ram entry as two bytes for the location and one byte for the value
         for mem, mem_expect in zip(ram, ram_expected):
             loc, val = mem
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         exit(0)
     json_filename = Path(sys.argv[1])  # The input JSON filename
     if len(sys.argv) < 4:
-        mv_filename = json_filename.parent.parent / (f"unit/{json_filename.name}")  
+        mv_filename = json_filename.parent.parent / (f"unit/{json_filename.name}")
         binary_filename = mv_filename.with_suffix(".uunit")
     else:
         binary_filename = sys.argv[3]

@@ -27,21 +27,21 @@
  * Mapping from opcode to canonical opcode
  */
 static const addr_mode_t OPCODE_TO_CANONICAL[] = {
-    O_BRK, O_ORA, O_DNE, O_DNE, O_DNE, O_ORA, O_ASL, O_DNE, O_PHP, O_ORA, O_ASL, O_DNE, O_DNE, O_ORA, O_ASL, O_DNE, 
-    O_BPL, O_ORA, O_DNE, O_DNE, O_DNE, O_ORA, O_ASL, O_DNE, O_CLC, O_ORA, O_DNE, O_DNE, O_DNE, O_ORA, O_ASL, O_DNE, 
-    O_JSR, O_AND, O_DNE, O_DNE, O_BIT, O_AND, O_ROL, O_DNE, O_PLP, O_AND, O_ROL, O_DNE, O_BIT, O_AND, O_ROL, O_DNE, 
-    O_BMI, O_AND, O_DNE, O_DNE, O_DNE, O_AND, O_ROL, O_DNE, O_SEC, O_AND, O_DNE, O_DNE, O_DNE, O_AND, O_ROL, O_DNE, 
-    O_RTI, O_EOR, O_DNE, O_DNE, O_DNE, O_EOR, O_LSR, O_DNE, O_PHA, O_EOR, O_LSR, O_DNE, O_JMP, O_EOR, O_LSR, O_DNE, 
-    O_BVC, O_EOR, O_DNE, O_DNE, O_DNE, O_EOR, O_LSR, O_DNE, O_CLI, O_EOR, O_DNE, O_DNE, O_DNE, O_EOR, O_LSR, O_DNE, 
-    O_RTS, O_ADC, O_DNE, O_DNE, O_DNE, O_ADC, O_ROR, O_DNE, O_PLA, O_ADC, O_ROR, O_DNE, O_JMP, O_ADC, O_ROR, O_DNE, 
-    O_DNE, O_ADC, O_DNE, O_DNE, O_DNE, O_ADC, O_ROR, O_DNE, O_SEI, O_ADC, O_DNE, O_DNE, O_DNE, O_ADC, O_ROR, O_DNE, 
-    O_DNE, O_STA, O_DNE, O_DNE, O_STY, O_STA, O_STX, O_DNE, O_DEY, O_DNE, O_TXA, O_DNE, O_STY, O_STA, O_STX, O_DNE, 
-    O_BCC, O_STA, O_DNE, O_DNE, O_STY, O_STA, O_STX, O_DNE, O_TYA, O_STA, O_TXS, O_DNE, O_DNE, O_STA, O_DNE, O_DNE, 
-    O_LDY, O_LDA, O_LDX, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE, O_TAY, O_LDA, O_TAX, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE, 
-    O_BCS, O_LDA, O_DNE, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE, O_TSX, O_LDA, O_DNE, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE, 
-    O_CPY, O_CMP, O_DNE, O_DNE, O_CPY, O_CMP, O_DEC, O_DNE, O_INY, O_CMP, O_DEX, O_DNE, O_CPY, O_CMP, O_DEC, O_DNE, 
-    O_BNE, O_CMP, O_DNE, O_DNE, O_DNE, O_CMP, O_DEC, O_DNE, O_CLD, O_CMP, O_DNE, O_DNE, O_DNE, O_CMP, O_DEC, O_DNE, 
-    O_CPX, O_SBC, O_DNE, O_DNE, O_CPX, O_SBC, O_INC, O_DNE, O_INX, O_SBC, O_NOP, O_DNE, O_CPX, O_SBC, O_INC, O_DNE, 
+    O_BRK, O_ORA, O_DNE, O_DNE, O_DNE, O_ORA, O_ASL, O_DNE, O_PHP, O_ORA, O_ASL, O_DNE, O_DNE, O_ORA, O_ASL, O_DNE,
+    O_BPL, O_ORA, O_DNE, O_DNE, O_DNE, O_ORA, O_ASL, O_DNE, O_CLC, O_ORA, O_DNE, O_DNE, O_DNE, O_ORA, O_ASL, O_DNE,
+    O_JSR, O_AND, O_DNE, O_DNE, O_BIT, O_AND, O_ROL, O_DNE, O_PLP, O_AND, O_ROL, O_DNE, O_BIT, O_AND, O_ROL, O_DNE,
+    O_BMI, O_AND, O_DNE, O_DNE, O_DNE, O_AND, O_ROL, O_DNE, O_SEC, O_AND, O_DNE, O_DNE, O_DNE, O_AND, O_ROL, O_DNE,
+    O_RTI, O_EOR, O_DNE, O_DNE, O_DNE, O_EOR, O_LSR, O_DNE, O_PHA, O_EOR, O_LSR, O_DNE, O_JMP, O_EOR, O_LSR, O_DNE,
+    O_BVC, O_EOR, O_DNE, O_DNE, O_DNE, O_EOR, O_LSR, O_DNE, O_CLI, O_EOR, O_DNE, O_DNE, O_DNE, O_EOR, O_LSR, O_DNE,
+    O_RTS, O_ADC, O_DNE, O_DNE, O_DNE, O_ADC, O_ROR, O_DNE, O_PLA, O_ADC, O_ROR, O_DNE, O_JMP, O_ADC, O_ROR, O_DNE,
+    O_DNE, O_ADC, O_DNE, O_DNE, O_DNE, O_ADC, O_ROR, O_DNE, O_SEI, O_ADC, O_DNE, O_DNE, O_DNE, O_ADC, O_ROR, O_DNE,
+    O_DNE, O_STA, O_DNE, O_DNE, O_STY, O_STA, O_STX, O_DNE, O_DEY, O_DNE, O_TXA, O_DNE, O_STY, O_STA, O_STX, O_DNE,
+    O_BCC, O_STA, O_DNE, O_DNE, O_STY, O_STA, O_STX, O_DNE, O_TYA, O_STA, O_TXS, O_DNE, O_DNE, O_STA, O_DNE, O_DNE,
+    O_LDY, O_LDA, O_LDX, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE, O_TAY, O_LDA, O_TAX, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE,
+    O_BCS, O_LDA, O_DNE, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE, O_TSX, O_LDA, O_DNE, O_DNE, O_LDY, O_LDA, O_LDX, O_DNE,
+    O_CPY, O_CMP, O_DNE, O_DNE, O_CPY, O_CMP, O_DEC, O_DNE, O_INY, O_CMP, O_DEX, O_DNE, O_CPY, O_CMP, O_DEC, O_DNE,
+    O_BNE, O_CMP, O_DNE, O_DNE, O_DNE, O_CMP, O_DEC, O_DNE, O_CLD, O_CMP, O_DNE, O_DNE, O_DNE, O_CMP, O_DEC, O_DNE,
+    O_CPX, O_SBC, O_DNE, O_DNE, O_CPX, O_SBC, O_INC, O_DNE, O_INX, O_SBC, O_NOP, O_DNE, O_CPX, O_SBC, O_INC, O_DNE,
     O_BEQ, O_SBC, O_DNE, O_DNE, O_DNE, O_SBC, O_INC, O_DNE, O_SED, O_SBC, O_DNE, O_DNE, O_DNE, O_SBC, O_INC, O_DNE
 };
 
@@ -49,43 +49,43 @@ static const addr_mode_t OPCODE_TO_CANONICAL[] = {
  * Mapping from opcode to addressing mode
  */
 static const uint8_t OPCODE_TO_ADDRMODE[] = {
-    IMPL, INDIR_X, 0, 0, 0, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, 0, ABS, ABS, 0, 
-    REL, INDIR_Y, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y, 0, 0, 0, ABS_X, ABS_X, 0, 
-    ABS, INDIR_X, 0, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, ABS, ABS, ABS, 0, 
-    REL, INDIR_Y, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y, 0, 0, 0, ABS_X, ABS_X, 0, 
-    IMPL, INDIR_X, 0, 0, 0, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, ABS, ABS, ABS, 0, 
-    REL, INDIR_Y, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y, 0, 0, 0, ABS_X, ABS_X, 0, 
-    IMPL, INDIR_X, 0, 0, 0, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, INDIR, ABS, ABS, 0, 
-    0, INDIR_Y, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y, 0, 0, 0, ABS_X, ABS_X, 0, 
-    0, INDIR_X, 0, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, 0, IMPL, 0, ABS, ABS, ABS, 0, 
-    REL, INDIR_Y, 0, 0, ZPAGE_X, ZPAGE_X, ZPAGE_Y, 0, IMPL, ABS_Y, IMPL, 0, 0, ABS_X, 0, 0, 
-    IMMED, INDIR_X, IMMED, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, IMMED, IMPL, 0, ABS, ABS, ABS, 0, 
-    REL, INDIR_Y, 0, 0, ZPAGE_X, ZPAGE_X, ZPAGE_Y, 0, IMPL, ABS_Y, 0, 0, ABS_X, ABS_X, ABS_Y, 0, 
-    IMMED, INDIR_X, 0, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, IMMED, IMPL, 0, ABS, ABS, ABS, 0, 
-    REL, INDIR_Y, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y, 0, 0, 0, ABS_X, ABS_X, 0, 
-    IMMED, INDIR_X, 0, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, IMMED, IMPL, 0, ABS, ABS, ABS, 0, 
-    REL, INDIR_Y, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y, 0, 0, 0, ABS_X, ABS_X, 0
+    IMPL, INDIR_X, 0, 0, 0, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, 0, ABS, ABS, 0,
+    REL, INDIR_Y_RO, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y_RO, 0, 0, 0, ABS_X_RO, ABS_X, 0,
+    ABS, INDIR_X, 0, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, ABS, ABS, ABS, 0,
+    REL, INDIR_Y_RO, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y_RO, 0, 0, 0, ABS_X_RO, ABS_X, 0,
+    IMPL, INDIR_X, 0, 0, 0, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, ABS, ABS, ABS, 0,
+    REL, INDIR_Y_RO, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y, 0, 0, 0, ABS_X_RO, ABS_X, 0,
+    IMPL, INDIR_X, 0, 0, 0, ZPAGE, ZPAGE, 0, IMPL, IMMED, ACCUM, 0, INDIR, ABS, ABS, 0,
+    0, INDIR_Y_RO, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y_RO, 0, 0, 0, ABS_X_RO, ABS_X, 0,
+    0, INDIR_X, 0, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, 0, IMPL, 0, ABS, ABS, ABS, 0,
+    REL, INDIR_Y, 0, 0, ZPAGE_X, ZPAGE_X, ZPAGE_Y, 0, IMPL, ABS_Y, IMPL, 0, 0, ABS_X, 0, 0,
+    IMMED, INDIR_X, IMMED, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, IMMED, IMPL, 0, ABS, ABS, ABS, 0,
+    REL, INDIR_Y_RO, 0, 0, ZPAGE_X, ZPAGE_X, ZPAGE_Y, 0, IMPL, ABS_Y_RO, 0, 0, ABS_X_RO, ABS_X_RO, ABS_Y_RO, 0,
+    IMMED, INDIR_X, 0, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, IMMED, IMPL, 0, ABS, ABS, ABS, 0,
+    REL, INDIR_Y_RO, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y_RO, 0, 0, 0, ABS_X_RO, ABS_X, 0,
+    IMMED, INDIR_X, 0, 0, ZPAGE, ZPAGE, ZPAGE, 0, IMPL, IMMED, IMPL, 0, ABS, ABS, ABS, 0,
+    REL, INDIR_Y_RO, 0, 0, 0, ZPAGE_X, ZPAGE_X, 0, IMPL, ABS_Y_RO, 0, 0, 0, ABS_X_RO, ABS_X, 0
 };
 
 /*
  * Mapping from opcode to clock cycles taken
  */
 static const clk_t OPCODE_TO_CYCLES[] = {
-    7, 6, 0, 0, 0, 3, 5, 0, 3, 2, 2, 0, 0, 4, 6, 0, 
-    2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0, 
-    6, 6, 0, 0, 3, 3, 5, 0, 4, 2, 2, 0, 4, 4, 6, 0, 
-    2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0, 
-    6, 6, 0, 0, 0, 3, 5, 0, 3, 2, 2, 0, 3, 4, 6, 0, 
-    2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0, 
-    6, 6, 0, 0, 0, 3, 5, 0, 4, 2, 2, 0, 5, 4, 6, 0, 
-    0, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0, 
-    0, 6, 0, 0, 3, 3, 3, 0, 2, 0, 2, 0, 4, 4, 4, 0, 
-    2, 6, 0, 0, 4, 4, 4, 0, 2, 5, 2, 0, 0, 5, 0, 0, 
-    2, 6, 2, 0, 3, 3, 3, 0, 2, 2, 2, 0, 4, 4, 4, 0, 
-    2, 5, 0, 0, 4, 4, 4, 0, 2, 4, 0, 0, 4, 4, 4, 0, 
-    2, 6, 0, 0, 3, 3, 5, 0, 2, 2, 2, 0, 4, 4, 6, 0, 
-    2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0, 
-    2, 6, 0, 0, 3, 3, 5, 0, 2, 2, 2, 0, 4, 4, 6, 0, 
+    7, 6, 0, 0, 0, 3, 5, 0, 3, 2, 2, 0, 0, 4, 6, 0,
+    2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0,
+    6, 6, 0, 0, 3, 3, 5, 0, 4, 2, 2, 0, 4, 4, 6, 0,
+    2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0,
+    6, 6, 0, 0, 0, 3, 5, 0, 3, 2, 2, 0, 3, 4, 6, 0,
+    2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0,
+    6, 6, 0, 0, 0, 3, 5, 0, 4, 2, 2, 0, 5, 4, 6, 0,
+    0, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0,
+    0, 6, 0, 0, 3, 3, 3, 0, 2, 0, 2, 0, 4, 4, 4, 0,
+    2, 6, 0, 0, 4, 4, 4, 0, 2, 5, 2, 0, 0, 5, 0, 0,
+    2, 6, 2, 0, 3, 3, 3, 0, 2, 2, 2, 0, 4, 4, 4, 0,
+    2, 5, 0, 0, 4, 4, 4, 0, 2, 4, 0, 0, 4, 4, 4, 0,
+    2, 6, 0, 0, 3, 3, 5, 0, 2, 2, 2, 0, 4, 4, 6, 0,
+    2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0,
+    2, 6, 0, 0, 3, 3, 5, 0, 2, 2, 2, 0, 4, 4, 6, 0,
     2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0
 };
 
@@ -143,7 +143,7 @@ static bool get_flag(ucpu_t *cpu, flag_t flag) {
 
 /**
  * @brief
- * 
+ *
  * @returns -1 if page(ptr1) < page(ptr2), +1 if page(ptr1) > page(ptr2), 0 if equal.
  */
 static int compare_pages(uaddr_t ptr1, uaddr_t ptr2) {
@@ -151,7 +151,7 @@ static int compare_pages(uaddr_t ptr1, uaddr_t ptr2) {
     uaddr_t page2 = (ptr2 >> 8); // ditto
     if (page1 < page2) return -1;
     else if (page1 == page2) return 0;
-    else if (page1 > page2) return 1;
+    else return 1;
 }
 
 /**
@@ -174,9 +174,9 @@ void init_cpu(ucpu_t *cpu) {
     cpu->A = 0u; // accumulator
     cpu->X = 0u; // generic register X
     cpu->Y = 0u; // generic register Y
-    cpu->S = 0x01FF; // stack pointer. Stores EMULATED memory address.
+    cpu->S = 0xFF; // stack pointer. Stores EMULATED memory address offset.
     cpu->status = 16u; // status "register" -- bit 5 always set
-    
+
     // initialize main memory pointer
     cpu->buslink = (buslink_t) {
 		DEV_CPU,
@@ -198,7 +198,6 @@ void push(ucpu_t *cpu, byte_t what) {
 byte_t pop(ucpu_t *cpu) {
     if (cpu->S == 0x00FF) {
         UERRNO = ERR_STACK_UNDERFLOW;
-        return 0x00;
     }
     cpu->S++;
     return GETS(cpu->S + STACK_OFFSET);
@@ -206,7 +205,7 @@ byte_t pop(ucpu_t *cpu) {
 
 /**
  * @brief
- * 
+ *
  * @returns 1 if program terminates, 0 otherwise.
  */
 int step(ucpu_t *cpu) {
@@ -215,7 +214,7 @@ int step(ucpu_t *cpu) {
         cpu->cycs_left--; // indicate one more cycle has passed
         return 0;
     } else if (cpu->cycs_left == 0) {
-        // interpret the next instruction and reset the state machine 
+        // interpret the next instruction and reset the state machine
         // get the current opcode
         opcode_t op = GETS(cpu->PC); // asks the bus what byte is at position PC
 									 // and interprets this as the current instruction.
@@ -240,12 +239,12 @@ int step(ucpu_t *cpu) {
         cpu->cycs_left = OPCODE_TO_CYCLES[op] - 1; // subtract 1 for current cycle
 
         // get the addressing mode
-        cpu->curr_addr_mode = OPCODE_TO_ADDRMODE[op]; 
+        cpu->curr_addr_mode = OPCODE_TO_ADDRMODE[op];
 
         cpu->operand = NULLPTR;
         cpu->accum = false;
 		cpu->indir = false;
-		
+
 		// the goal is to be able to do get_byte(cpu->buslink, cpu->operand)
 		// and set_byte(cpu->buslink, cpu-<operand) and have it do the proper thing
 
@@ -259,7 +258,7 @@ int step(ucpu_t *cpu) {
                 cpu->PC += 2; // remember to increment PC
                 break;
             }
-						
+
             case ZPAGE: {
                 cpu->operand = GETS(cpu->PC + 1); // implicit conversion from byte_t -> uaddr_t
                 cpu->PC += 2;
@@ -290,7 +289,7 @@ int step(ucpu_t *cpu) {
             }
 
             case INDIR_X: {
-                uaddr_t before_indir = (GETS(cpu->PC + 1) + cpu->X) % 256; 
+                uaddr_t before_indir = (GETS(cpu->PC + 1) + cpu->X) % 256;
 				cpu->operand = pack(GETS(before_indir + 1),
                                     GETS(before_indir));
                 cpu->PC += 2;
@@ -298,6 +297,14 @@ int step(ucpu_t *cpu) {
             }
 
             case ABS_X: {
+                uaddr_t indexed = (uaddr_t) GETS(cpu->PC + 1) + (uaddr_t) cpu->X;
+				cpu->operand = pack(GETS(cpu->PC + 2),
+									indexed);
+                cpu->PC += 3;
+                break;
+            }
+
+            case ABS_X_RO: { // read-only instructions potentially take an extra cycle
 				uaddr_t indexed = (uaddr_t) GETS(cpu->PC + 1) + (uaddr_t) cpu->X;
 				cpu->operand = pack(GETS(cpu->PC + 2),
 									indexed);
@@ -307,10 +314,19 @@ int step(ucpu_t *cpu) {
                 cpu->PC += 3;
                 break;
             }
-			
+
             case INDIR_Y: {
                 uaddr_t before_indir = GETS(cpu->PC + 1);
-				uaddr_t after_indir = pack(GETS(before_indir + 1),
+				uaddr_t after_indir = pack(GETS((before_indir + 1) % 256),
+										   GETS(before_indir));
+                cpu->operand = after_indir + cpu->Y;
+                cpu->PC += 2;
+                break;
+            }
+
+            case INDIR_Y_RO: {
+                uaddr_t before_indir = GETS(cpu->PC + 1);
+				uaddr_t after_indir = pack(GETS((before_indir + 1) % 256),
 										   GETS(before_indir));
                 cpu->operand = after_indir + cpu->Y;
                 if (compare_pages(after_indir, cpu->operand) != 0) {
@@ -324,6 +340,14 @@ int step(ucpu_t *cpu) {
                 uaddr_t indexed = (uaddr_t) GETS(cpu->PC + 1) + (uaddr_t) cpu->Y;
 				cpu->operand = pack(GETS(cpu->PC + 2),
 									indexed);
+                cpu->PC += 3;
+                break;
+            }
+
+            case ABS_Y_RO: {
+                uaddr_t indexed = (uaddr_t) GETS(cpu->PC + 1) + (uaddr_t) cpu->Y;
+				cpu->operand = pack(GETS(cpu->PC + 2),
+									indexed);
                 if (indexed > 255) { // page crossing
                     cpu->cycs_left++;
                 }
@@ -334,7 +358,7 @@ int step(ucpu_t *cpu) {
             case ACCUM: {
                 cpu->accum = true;
                 cpu->PC += 1;
-                break; 
+                break;
             }
 
             default: {
@@ -358,8 +382,8 @@ int step(ucpu_t *cpu) {
 
     // get the addressing mode
     addr_mode_t addr_mode = cpu->curr_addr_mode;
-	uaddr_t operand = cpu->operand; 
-    bool accum = cpu->accum; 
+	uaddr_t operand = cpu->operand;
+    bool accum = cpu->accum;
 
     switch (op) {
         case O_ADC: {
@@ -382,7 +406,7 @@ int step(ucpu_t *cpu) {
             set_flag(cpu, NEGATIVE, !sign(cpu->A));
             break;
         }
-					
+
         case O_ASL: { // a bit messy...
             byte_t val;
             if (cpu->accum) {
@@ -429,6 +453,7 @@ int step(ucpu_t *cpu) {
             }
             break;
         }
+
         case O_BEQ: {
             if (get_flag(cpu, ZERO) || cpu->deferred) {
                 offset_t off = (offset_t) GETS(operand);
@@ -616,15 +641,15 @@ int step(ucpu_t *cpu) {
         }
 
         case O_JMP: {
-            /* 
+            /*
              * Taken from nesdev.org:
-             * An original 6502 has does not correctly fetch the 
-             * target address if the indirect vector falls on a 
-             * page boundary (e.g. $xxFF where xx is any value from 
-             * $00 to $FF). In this case fetches the LSB from $xxFF 
-             * as expected but takes the MSB from $xx00. This is 
-             * fixed in some later chips like the 65SC02 so for 
-             * compatibility always ensure the indirect vector is 
+             * An original 6502 has does not correctly fetch the
+             * target address if the indirect vector falls on a
+             * page boundary (e.g. $xxFF where xx is any value from
+             * $00 to $FF). In this case fetches the LSB from $xxFF
+             * as expected but takes the MSB from $xx00. This is
+             * fixed in some later chips like the 65SC02 so for
+             * compatibility always ensure the indirect vector is
              * not at the end of the page.
              */
 #ifdef DEBUG
@@ -638,7 +663,7 @@ int step(ucpu_t *cpu) {
 
         case O_JSR: {
             push(cpu, high(cpu->PC - 1)); // "-1" is NOT a typo.
-            push(cpu, low(cpu->PC - 1)); 
+            push(cpu, low(cpu->PC - 1));
             cpu->PC = operand; // again, NOT a typo!!
             break;
         }
@@ -708,8 +733,10 @@ int step(ucpu_t *cpu) {
         }
 
         case O_PLP: {
+            bool prev_brk = get_flag(cpu, BREAK);
             cpu->status = pop(cpu);
             set_flag(cpu, FIVE, true);
+            set_flag(cpu, BREAK, prev_brk); // ignore pulled BREAK flag
             break;
         }
 
@@ -725,7 +752,7 @@ int step(ucpu_t *cpu) {
                 set_flag(cpu, CARRY, get_nth_bit(GETS(operand), 7));
                 SETS(operand, (GETS(operand) << 1) | carry_r);
                 set_flag(cpu, NEGATIVE, !sign(GETS(operand)));
-                set_flag(cpu, ZERO, GETS(operand) == 0); 
+                set_flag(cpu, ZERO, GETS(operand) == 0);
             }
             break;
         }
@@ -847,7 +874,7 @@ int step(ucpu_t *cpu) {
 						   GETS(BRK_VECTOR));
 			break;
         }
-					
+
         default: {
             break;
         }
@@ -857,7 +884,7 @@ int step(ucpu_t *cpu) {
 
 void dump_cpu(FILE *out, ucpu_t *cpu) {
      fprintf(out, "PC: %" PRIu16 " A: %" PRIu8 " X: %" PRIu8 " "
-                "Y: %" PRIu8 " S: %" PRIu16 " status: %" PRIu8 " "
+                "Y: %" PRIu8 " S: %" PRIu8 " status: %" PRIu8 " "
                 "remaining cycles: %" PRIu64 " deferred: %d\n",
                 cpu->PC, cpu->A, cpu->X, cpu->Y, cpu->S, cpu->status,
                 cpu->cycs_left, cpu->deferred);

@@ -128,9 +128,12 @@ typedef enum {
     ABS,
     ABS_X,
     ABS_Y,
+    ABS_X_RO, // read-only instructions may take extra cycles
+    ABS_Y_RO, // ditto
     INDIR,
     INDIR_X,
     INDIR_Y,
+    INDIR_Y_RO, // note read-only instructions only take extra cycles for INDIR_Y
     REL,
     IMPL
 } addr_mode_t;
@@ -191,7 +194,7 @@ typedef struct ucpu {
     uregr_t A; // Accumulator
     uregr_t X; // Generic register
     uregr_t Y; // Ditto
-    uaddr_t S; // Stack pointer. Stores EMULATED memory address.
+    uregr_t S; // Stack pointer. Stores EMULATED memory address offset.
     ustat_t status; // Status "register"
 
     /* LINK TO BUS */
@@ -199,7 +202,7 @@ typedef struct ucpu {
     buslink_t buslink;
 
     /* STATE MACHINE LOGIC */
-    
+
     // These four fields allow the CPU to jump to the proper switch case
     // and perform the proper logic when it's time to actually execute the instruction.
     addr_mode_t curr_addr_mode; // we might not need this one?
@@ -212,11 +215,11 @@ typedef struct ucpu {
 				// is two bytes long
 
     // This field is bookkeeping for when the emulator should execute
-    // the instruction it's waiting on. When it hits 1, it will execute the instruction. 
-    clk_t cycs_left; 
+    // the instruction it's waiting on. When it hits 1, it will execute the instruction.
+    clk_t cycs_left;
 
     // This field is bookkeeping for branch instructions that defer
-    // execution by one cycle upon a successful branch. 
+    // execution by one cycle upon a successful branch.
     // Upon a successful branch, step() will set this flag, increment
     // cycs_left by 1, and return. When execution returns to the
     // branch case, step() will perform the jump unconditionally.
