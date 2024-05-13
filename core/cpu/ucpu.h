@@ -174,7 +174,6 @@ typedef uint8_t ustat_t;
  */
 typedef int8_t offset_t;
 
-
 /*
  * Opcodes are always a byte wide.
  */
@@ -211,7 +210,7 @@ typedef struct ucpu {
                      // so we can fiddle with memory contents
     bool accum; // we need to manually set this option
     // since the operand is actually a register
-	bool indir; // this is the only instruction where the operand
+    bool indir; // this is the only instruction where the operand
 				// is two bytes long
 
     // This field is bookkeeping for when the emulator should execute

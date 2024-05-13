@@ -29,10 +29,13 @@ typedef struct px_buffer {
     pixel_t buf[NES_PX_WIDTH * NES_PX_WIDTH];
 } px_buffer_t;
 
+void lock_buffer(mtx_buffer_t *buf);
+void unlock_buffer(mtx_buffer_t *buf);
+
 /**
  * @brief
  * 
- * @note Acquires and releases a lock on the mutex.
+ * @note Is not synch-safe. Manually lock and unlock the mtx_buffer.
  */
 pixel_t get_at_coords(size_t x, size_t y);
 

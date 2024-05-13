@@ -1,5 +1,5 @@
 # OS-specific frameworks
-MAC = -framework Cocoa -framework OpenGL -framework IOKit
+MAC = -framework Cocoa -framework OpenGL -framework IOKit -framework GLUT
 OS = $(MAC)
 
 # External libraries
@@ -8,7 +8,8 @@ GLFW = lib/glfw/
 # Source file wildcards
 CORE_CPU = $(wildcard core/cpu/*.c)
 CORE_MEMORY = $(wildcard core/memory/*.c)
-SRC_CORE = $(CORE_CPU) $(CORE_MEMORY)
+CORE_GFX = $(wildcard core/graphics/*.c)
+SRC_CORE = $(CORE_CPU) $(CORE_MEMORY) $(CORE_GFX)
 
 # Driver paths
 DRIVERS = eval/drivers
@@ -16,7 +17,7 @@ CPU_DRIVER = $(DRIVERS)/cpu_driver.c
 CPU_UNIT_DRIVER = $(DRIVERS)/cpu_driver_stepwise.c
 
 # Misc. test paths
-GRAPHICS_TEST = eval/graphicstests/pxdisplay.c
+GRAPHICS_TEST = eval/graphicstests/pxdisplay.cpp $(CORE_GFX)
 
 # Include paths
 INCLUDE_DIRS = core include
@@ -24,8 +25,9 @@ INCLUDE = $(foreach d, $(INCLUDE_DIRS), -I$d)
 
 # Compiler flags
 OPTIONS = -fcommon $(INCLUDE) $(OS)
-COMPILE_CMD = gcc $(OPTIONS)
-DBG_COMPILE_CMD = gcc -g -DDEBUG -DCPU_TESTS $(OPTIONS)
+COMPILE_CMD = clang $(OPTIONS)
+COMPILE_CPP = clang++ $(OPTIONS)
+DBG_COMPILE_CMD = clang -g -DDEBUG -DCPU_TESTS $(OPTIONS)
 
 # Where outputted binaries go
 BIN = bin
@@ -33,7 +35,7 @@ BIN = bin
 .PHONY: clean
 
 display_px_test:
-	$(COMPILE_CMD) $(GRAPHICS_TEST) -L$(GLFW) -lglfw3 -o bin/display_px_test
+	$(COMPILE_CPP) $(GRAPHICS_TEST) -L$(GLFW) -lglfw3 -o bin/display_px_test
 
 cpu_unittest:
 	$(DBG_COMPILE_CMD) $(SRC_CORE) $(CPU_UNIT_DRIVER) -o $(BIN)/cpu_unittest

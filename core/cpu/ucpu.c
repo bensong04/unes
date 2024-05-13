@@ -203,10 +203,35 @@ byte_t pop(ucpu_t *cpu) {
     return GETS(cpu->S + STACK_OFFSET);
 }
 
+void cpu_nmi(ucpu_t *cpu) {
+    push(cpu, high(cpu->PC + 1));
+    push(cpu, low(cpu->PC + 1));
+    bool original_brk = get_flag(cpu, BREAK);
+    set_flag(cpu, BREAK, true);
+    push(cpu, cpu->status);
+    set_flag(cpu, BREAK, original_brk);
+    set_flag(cpu, INTERRUPT, true); // I think?
+    cpu->PC = pack(GETS(NMI_VECTOR + 1),
+                    GETS(NMI_VECTOR));
+}
+
+void cpu_irq(ucpu_t *cpu) {
+    if (get_flag(cpu, INTERRUPT)) return; // ignore IRQs when interrupt disable is set
+    push(cpu, high(cpu->PC + 1));
+    push(cpu, low(cpu->PC + 1));
+    bool original_brk = get_flag(cpu, BREAK);
+    set_flag(cpu, BREAK, true);
+    push(cpu, cpu->status);
+    set_flag(cpu, BREAK, original_brk);
+    set_flag(cpu, INTERRUPT, true); // I think?
+    cpu->PC = pack(GETS(NMI_VECTOR + 1),
+                    GETS(NMI_VECTOR));
+}
+
 /**
  * @brief
  *
- * @returns 1 if program terminates, 0 otherwise.
+ * @returns -1 if program terminates, 0 otherwise.
  */
 int step(ucpu_t *cpu) {
     // check if CPU is currently waiting on clock
@@ -881,6 +906,7 @@ int step(ucpu_t *cpu) {
             set_flag(cpu, BREAK, true);
             push(cpu, cpu->status);
             set_flag(cpu, BREAK, original_brk);
+            set_flag(cpu, INTERRUPT, true);
             cpu->PC = pack(GETS(BRK_VECTOR + 1),
 						   GETS(BRK_VECTOR));
             break;

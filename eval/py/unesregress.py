@@ -10,7 +10,7 @@ from pathlib import Path
 import sys, subprocess as proc
 import json
 
-HOW_MANY = 2500
+HOW_MANY = 5000
 OK = 0
 UNIMPLEMENTED = 3
 FAIL_THRESH = 10
