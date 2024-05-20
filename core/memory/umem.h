@@ -4,10 +4,13 @@
  * 
  * @author Benedict Song
  */
-#ifndef _UMEM_INCLUDED
+#pragma once
 #include <stdint.h>
 #include <unistd.h>
 #include <sys/mman.h>
+
+#include "cpu/ucpu.h"
+#include "ppu/uppu.h"
 
 /*
  * The NES possesses 256 pages X 256 bytes of memory.
@@ -18,6 +21,14 @@
  * In real life, the NES CPU has access to about 2 KB of memory.
  */
 #define UCPU_MEM_CAP (2048)
+
+/*
+ */
+#define UCPU_MIRROR_RANGE 0x2000u
+
+/*
+ */
+#define UCPU_PPU_REG_RANGE 0x4000u
 
 /*
  * Macro for Tom Harte CPU unit tests.
@@ -34,6 +45,13 @@
  * the special program counter (PC) register holds 16 bits.
  */
 typedef uint16_t uaddr_t; // Memory address type/PC register type
+
+/*
+ * Many components of the NES support an 8-flag "status" group
+ * or latch. They can be considered as being packed into a single 
+ * 8 bit "register," of sorts.
+ */
+typedef uint8_t ustat_t;
 
 /*
  * Represents a null pointer to the address bus.
@@ -56,6 +74,9 @@ typedef byte_t *ram_t; // Ditto
 typedef struct bus {
     ram_t cpu_ram;
     ram_t ppu_ram; // will add more later
+    ucpu_t *cpu;
+    uppu_t *ppu;
+    ustat_t p_latch;
 } bus_t;
 
 /*
@@ -77,12 +98,12 @@ typedef struct buslink {
     bus_t *bus;
 } buslink_t;
 
+void set_flag(ucpu_t *cpu, flag_t flag, bool value);
+bool get_flag(ucpu_t *cpu, flag_t flag);
+
 bus_t new_bus();
 
 void link_device(buslink_t *link, bus_t *bus);
 
 void set_byte(buslink_t link, uaddr_t which, byte_t what);
 byte_t get_byte(buslink_t link, uaddr_t which);
-
-#define _UMEM_INCLUDED
-#endif

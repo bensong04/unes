@@ -34,74 +34,73 @@
  * opcodes instead: ex. the 0x65th byte in this array would be set
  * to 0x69. Then we will switch on these opcodes in a 56-case
  * switch statement.
- *
- * Macros are used over enums here because I am dumb.
- * TODO: become not dumb and refactor later.
  */
-#define O_ADC 0x69
-#define O_AND 0x29
-#define O_ASL 0x0A
-#define O_BCC 0x90
-#define O_BCS 0xB0
-#define O_BEQ 0xF0
-#define O_BIT 0x24
-#define O_BMI 0x30
+typedef enum opcodes {
+    O_ADC, 
+    O_AND,
+    O_ASL, 
+    O_BCC, 
+    O_BCS, 
+    O_BEQ, 
+    O_BIT, 
+    O_BMI, 
 
-#define O_BNE 0xD0
-#define O_BPL 0x10
-#define O_BRK 0x00
-#define O_BVC 0x50
-#define O_BVS 0x70
-#define O_CLC 0x18
-#define O_CLD 0xD8
-#define O_CLI 0x58
+    O_BNE,
+    O_BPL, 
+    O_BRK, 
+    O_BVC, 
+    O_BVS, 
+    O_CLC, 
+    O_CLD,
+    O_CLI, 
 
-#define O_CLV 0xB8
-#define O_CMP 0xC9
-#define O_CPX 0xE0
-#define O_CPY 0xC0
-#define O_DEC 0xC6
-#define O_DEX 0xCA
-#define O_DEY 0x88
-#define O_EOR 0x49
+    O_CLV, 
+    O_CMP, 
+    O_CPX, 
+    O_CPY, 
+    O_DEC, 
+    O_DEX, 
+    O_DEY, 
+    O_EOR, 
 
-#define O_INC 0xE6
-#define O_INX 0xE8
-#define O_INY 0xC8
-#define O_JMP 0x4C
-#define O_JSR 0x20
-#define O_LDA 0xA9
-#define O_LDX 0xA2
-#define O_LDY 0xA0
+    O_INC, 
+    O_INX, 
+    O_INY, 
+    O_JMP, 
+    O_JSR, 
+    O_LDA, 
+    O_LDX, 
+    O_LDY, 
 
-#define O_LSR 0x4A
-#define O_NOP 0xEA
-#define O_ORA 0x09
-#define O_PHA 0x48
-#define O_PHP 0x08
-#define O_PLA 0x68
-#define O_PLP 0x28
-#define O_ROL 0x2A
+    O_LSR, 
+    O_NOP, 
+    O_ORA, 
+    O_PHA, 
+    O_PHP, 
+    O_PLA, 
+    O_PLP, 
+    O_ROL, 
 
-#define O_ROR 0x6A
-#define O_RTI 0x40
-#define O_RTS 0x60
-#define O_SBC 0xE9
-#define O_SEC 0x38
-#define O_SED 0xF8
-#define O_SEI 0x78
-#define O_STA 0x85
+    O_ROR,
+    O_RTI, 
+    O_RTS, 
+    O_SBC, 
+    O_SEC, 
+    O_SED, 
+    O_SEI, 
+    O_STA, 
 
-#define O_STX 0x86
-#define O_STY 0x84
-#define O_TAX 0xAA
-#define O_TAY 0xA8
-#define O_TSX 0xBA
-#define O_TXA 0x8A
-#define O_TXS 0x9A
-#define O_TYA 0x98
+    O_STX, 
+    O_STY, 
+    O_TAX, 
+    O_TAY, 
+    O_TSX, 
+    O_TXA, 
+    O_TXS, 
+    O_TYA, 
 
-#define O_DNE 0xFF
+    O_DNE
+} opcode_t;
 
 /*
  * Hardware/software interrupt vectors
@@ -162,22 +161,10 @@ typedef enum {
 typedef uint8_t uregr_t; // Type of all other registers
 
 /*
- * The 6502 also possesses seven (technically six) boolean flags.
- * They can be considered as being packed into a single 8 bit
- * "register," of sorts.
- */
-typedef uint8_t ustat_t;
-
-/*
  * Alternate 8-bit-wide type to represent offsets (which are
  * obviously signed).
  */
 typedef int8_t offset_t;
-
-/*
- * Opcodes are always a byte wide.
- */
-typedef uint8_t opcode_t;
 
 /*
  * This datatype should be wide enough to hold the current clock state

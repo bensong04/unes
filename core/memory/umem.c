@@ -13,6 +13,23 @@
 #endif
 #include "memory/umem.h"
 
+/**
+ * @brief
+ */
+void set_flag(ucpu_t *cpu, flag_t flag, bool value) {
+    if (value)
+        cpu->status |= (1u << ((int) flag));
+    else
+        cpu->status &= ~(1u << ((int) flag));
+}
+
+/**
+ * @brief
+ */
+bool get_flag(ucpu_t *cpu, flag_t flag) {
+    return get_nth_bit(cpu->status, (int) flag);
+}
+
 ram_t alloc_ram(size_t how_much) {
     // Map how_much bytes to the emulating process.
     // The extra heap space can then be used to emulate RAM.
@@ -58,7 +75,71 @@ void set_byte(buslink_t link, uaddr_t which, byte_t what) {
             printf("Address %" PRIu16 " set to %" PRIu8 ".\n",
                     which, what);
 #endif
-            bus->cpu_ram[which] = what;
+            if (which < UCPU_MIRROR_RANGE) {
+                bus->cpu_ram[which % UCPU_MEM_CAP] = what;
+            } else if (which < UCPU_PPU_REG_RANGE) {
+                uppu_t *ppu = bus->ppu;
+
+                // writing anything to the PPU registers (even to STATUS)
+                // fills the 8-bit latch. when reading a write-only
+                // register, the value of the latch is returned.
+                // latch delay is unimplemented.
+                bus->p_latch = what;
+
+                // handle mirroring
+                uaddr_t request = (which % 8) + PPU_CTRL_ADDR;
+
+                switch (request) {
+                    case PPU_CTRL_ADDR: {
+                        ppu->PPU_CTRL = (ustat_t) what;
+                        break;
+                    }
+
+                    case PPU_MASK_ADDR: {
+                        ppu->PPU_MASK = (ustat_t) what;
+                        break;
+                    }
+
+                    case PPU_OAMA_ADDR: {
+                        ppu->OAM_ADDR = what;
+                        break;
+                    }
+
+                    case PPU_OAMD_ADDR: {
+                        ppu->OAM_DATA = what;
+                        break;
+                    }
+
+                    case PPU_SCRL_ADDR: {
+                        ppu->PPU_SCRL = what;
+                        // toggle the write latch
+                        ppu->w = !ppu->w;
+                        break;
+                    }
+
+                    case PPU_ADDR_ADDR: {
+                        ppu->PPU_ADDR = what;
+                        // toggle the write latch
+                        ppu->w = !ppu->w;
+                        break;
+                    }
+
+                    case PPU_DATA_ADDR: {
+                        ppu->OAM_DATA = what;
+                        break;
+                    }
+
+                    case OAM_DMA_ADDR: {
+                        // unimplemented for now...
+                        break;
+                    }
+
+                    default: // do nothing
+                }
+            } else {
+
+            }
+
             break;
         }
     }
@@ -75,7 +156,13 @@ byte_t get_byte(buslink_t link, uaddr_t which) {
             //printf("Read %" PRIu8 " at address %" PRIu16 ".\n",
                     //bus->cpu_ram[which], which);
 #endif
-            return bus->cpu_ram[which];
+            if (which < UCPU_MIRROR_RANGE) {
+                return bus->cpu_ram[which % UCPU_MEM_CAP];
+            } else if (which < UCPU_PPU_REG_RANGE) {
+
+            } else {
+
+            }
             break;
         }
     }

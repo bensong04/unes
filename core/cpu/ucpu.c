@@ -126,23 +126,6 @@ static bool get_nth_bit(byte_t byte, int n) {
 
 /**
  * @brief
- */
-static void set_flag(ucpu_t *cpu, flag_t flag, bool value) {
-    if (value)
-        cpu->status |= (1u << ((int) flag));
-    else
-        cpu->status &= ~(1u << ((int) flag));
-}
-
-/**
- * @brief
- */
-static bool get_flag(ucpu_t *cpu, flag_t flag) {
-    return get_nth_bit(cpu->status, (int) flag);
-}
-
-/**
- * @brief
  *
  * @returns -1 if page(ptr1) < page(ptr2), +1 if page(ptr1) > page(ptr2), 0 if equal.
  */
