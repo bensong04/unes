@@ -2,7 +2,7 @@
 
 uNES is a basic NES emulator, currently still under development. In its current state it supports full, cycle-accurate CPU emulation. 
 
-uNES is written completely in C, and is meant to be fast and performant. The emulator avoids dynamic memory allocation entirely, and is able to run 80,000,000 instructions per second, clocking in at just under MHz.  
+uNES is written completely in C, and is meant to be fast and performant. The emulator avoids dynamic memory allocation entirely, and is able to run 80,000,000 instructions per second, clocking in at just under 300 MHz.  
 
 ## Issues
 
