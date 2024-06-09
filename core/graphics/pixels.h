@@ -1,14 +1,14 @@
 /**
  * @file
  * @brief
- * 
+ *
  * @author Benedict Song <benedict04song@gmail.com>
  */
 #ifndef _GFX_PIXELS_INCLUDED
 #include <stdint.h>
 
 /**
- * @brief Implement a pixel as an unsigned int, 122 style ;)  
+ * @brief Implement a pixel as an unsigned int, 122 style ;)
  */
 typedef uint32_t pixel_t;
 

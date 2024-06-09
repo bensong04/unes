@@ -6,18 +6,15 @@
  */
 #ifndef _CARTRIDGE_INCLUDED
 #include <stdio.h>
+
 #include "memory/umem.h"
 
-typedef enum {
-    MAPPER_0,
-    MAPPER_1,
-    MAPPER_2
-} mapper_t;
+typedef enum { MAPPER_0, MAPPER_1, MAPPER_2 } mapper_t;
 
 typedef struct {
-    byte_t *_data_ptr;
-    size_t cartridge_sz;
-    mapper_t mapper;
+  byte_t *_data_ptr;
+  size_t cartridge_sz;
+  mapper_t mapper;
 } cartridge_t;
 
 cartridge_t mount(const char *locale);

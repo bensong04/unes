@@ -1,7 +1,8 @@
-#ifndef _UPPU_INCLUDED
+#ifndef CPU_TESTS
+#pragma once
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "memory/umem.h"
 
@@ -17,29 +18,27 @@
 #define OAM_DMA_ADDR 0x4014u
 
 typedef struct uppu {
+  /* The 8 standard CPU-exposed registers */
 
-    /* The 8 standard CPU-exposed registers */
+  uregr_t PPU_CTRL;
+  uregr_t PPU_MASK;
+  uregr_t PPU_STAT;
+  uregr_t OAM_ADDR;
+  uregr_t OAM_DATA;
+  uregr_t PPU_SCRL;
+  uregr_t PPU_ADDR;
 
-    uregr_t PPU_CTRL;
-    uregr_t PPU_MASK;
-    uregr_t PPU_STAT;
-    uregr_t OAM_ADDR;
-    uregr_t OAM_DATA;
-    uregr_t PPU_SCRL;
-    uregr_t PPU_ADDR;
+  /* The special CPU-exposed OAMDMA register */
 
-    /* The special CPU-exposed OAMDMA register */
+  uregr_t OAM_DMA;
 
-    uregr_t OAM_DMA;
+  /* PPU internal registers */
 
-    /* PPU internal registers */
-
-    uaddr_t v; // current VRAM address; 15 bits
-    uaddr_t t; // temporary VRAM address; 15 bits
-    uregr_t x; // fine X scroll; 3 bits
-    bool w; // first or second write toggle; 1 bit
+  uaddr_t v;  // current VRAM address; 15 bits
+  uaddr_t t;  // temporary VRAM address; 15 bits
+  uregr_t x;  // fine X scroll; 3 bits
+  bool w;     // first or second write toggle; 1 bit
 
 } uppu_t;
 
-#define _UPPU_INCLUDED
 #endif

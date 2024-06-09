@@ -1,7 +1,7 @@
 /**
  * @file graphics/gfxprimitives.h
  * @brief Important constant definitions.
- * 
+ *
  * @author Benedict Song <benedict04song@gmail.com>
  */
 #ifndef _GFX_PRIMITIVES_INCLUDED

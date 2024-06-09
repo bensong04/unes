@@ -28,22 +28,41 @@ OPTIONS = -fcommon $(INCLUDE) $(OS)
 COMPILE_CMD = clang $(OPTIONS)
 COMPILE_CPP = clang++ $(OPTIONS)
 DBG_COMPILE_CMD = clang -g -DDEBUG -DCPU_TESTS $(OPTIONS)
+SPEEDY_COMPILE_CMD = clang -O3 -DCPU_TESTS $(OPTIONS)
 
 # Where outputted binaries go
 BIN = bin
 
-.PHONY: clean
+# Formatting preferences
+STYLE = GOOGLE
+FORMAT_EXTS = c cpp h
+FORMAT_DIR = core
 
-display_px_test:
+# Utility functions
+define allbutlast
+$(wordlist 2,$(words $(1)),x $(1))
+endef
+
+FORMAT_ARGS = $(call allbutlast, $(foreach ext,$(FORMAT_EXTS), -iname "*.$(ext)" -o))
+
+.PHONY: clean format
+
+format:
+	find $(FORMAT_DIR) $(FORMAT_ARGS) | xargs clang-format -i -style=$(STYLE)
+
+display_px_test: bin/display_px_test
 	$(COMPILE_CPP) $(GRAPHICS_TEST) -L$(GLFW) -lglfw3 -o bin/display_px_test
 
-cpu_unittest:
+speedtest: bin/speedtest
+	$(SPEEDY_COMPILE_CMD) $(SRC_CORE) $(CPU_DRIVER) -o bin/speedtest
+
+cpu_unittest: bin/cpu_unittest
 	$(DBG_COMPILE_CMD) $(SRC_CORE) $(CPU_UNIT_DRIVER) -o $(BIN)/cpu_unittest
 
-cpu_driver_dbg:
+cpu_driver_dbg: bin/cpu_driver
 	$(DBG_COMPILE_CMD) $(SRC_CORE) $(CPU_DRIVER) -o $(BIN)/cpu_driver
 
-cpu_driver:
+cpu_driver: bin/cpu_driver
 	$(COMPILE_CMD) $(SRC_CORE) $(CPU_DRIVER) -o $(BIN)/cpu_driver
 
 clean:
